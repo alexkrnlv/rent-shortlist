@@ -98,9 +98,9 @@ export function PropertyList() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
-          <MapPin size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-700 mb-2">No properties yet</h3>
-          <p className="text-sm text-gray-500">Click "Add Property" button above to get started</p>
+          <MapPin size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No properties yet</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Click "Add Property" button above to get started</p>
         </div>
       </div>
     );

@@ -44,15 +44,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full ${sizes[size]} transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                  <Dialog.Title className="text-lg font-semibold text-gray-900">
+              <Dialog.Panel className={`w-full ${sizes[size]} transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl transition-all`}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
                     {title}
                   </Dialog.Title>
                   <button
                     onClick={onClose}
                     aria-label="Close modal"
-                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <X size={20} />
                   </button>

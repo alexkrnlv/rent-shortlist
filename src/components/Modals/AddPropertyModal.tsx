@@ -238,11 +238,11 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
     <Modal isOpen={isOpen} onClose={handleClose} title="Add Property" size="lg">
       <div className="space-y-4">
         {/* Mode Toggle */}
-        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+        <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
           <button
             onClick={() => setMode('url')}
             className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-              mode === 'url' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
+              mode === 'url' ? 'bg-white dark:bg-gray-600 shadow text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
             <Link size={14} className="inline mr-2" />
@@ -251,7 +251,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
           <button
             onClick={() => setMode('manual')}
             className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-              mode === 'manual' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
+              mode === 'manual' ? 'bg-white dark:bg-gray-600 shadow text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
             <Plus size={14} className="inline mr-2" />
@@ -262,7 +262,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
         {mode === 'url' ? (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Paste property URLs (one per line or mixed with text)
               </label>
               <textarea
@@ -276,11 +276,11 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   }
                 }}
                 placeholder={"https://www.rightmove.co.uk/properties/123456789\nhttps://www.zoopla.co.uk/to-rent/details/12345678\n\nOr paste any text containing URLs..."}
-                className="w-full h-32 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                className="w-full h-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 disabled={isProcessing}
               />
               {urls.length > 0 && (
-                <p className="mt-2 text-sm text-gray-600">
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                   <Link size={14} className="inline mr-1" />
                   {urls.length} URL{urls.length !== 1 ? 's' : ''} detected
                 </p>
@@ -288,15 +288,15 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
             </div>
 
             {processingStatuses.length > 0 && (
-              <div className="max-h-40 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3">
+              <div className="max-h-40 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                 {processingStatuses.map((status, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-sm">
-                    {status.status === 'pending' && <div className="w-4 h-4 rounded-full bg-gray-200" />}
-                    {status.status === 'processing' && <Loader2 size={16} className="animate-spin text-primary-600" />}
+                    {status.status === 'pending' && <div className="w-4 h-4 rounded-full bg-gray-200 dark:bg-gray-600" />}
+                    {status.status === 'processing' && <Loader2 size={16} className="animate-spin text-primary-600 dark:text-primary-400" />}
                     {status.status === 'success' && <CheckCircle size={16} className="text-green-600" />}
                     {status.status === 'error' && <XCircle size={16} className="text-red-600" />}
                     {status.status === 'duplicate' && <Copy size={16} className="text-amber-500" />}
-                    <span className={`truncate flex-1 ${status.status === 'duplicate' ? 'text-amber-600' : 'text-gray-600'}`}>
+                    <span className={`truncate flex-1 ${status.status === 'duplicate' ? 'text-amber-600 dark:text-amber-400' : 'text-gray-600 dark:text-gray-400'}`}>
                       {status.url.length > 50 ? status.url.substring(0, 50) + '...' : status.url}
                       {status.status === 'duplicate' && <span className="ml-1 text-xs">(already added)</span>}
                     </span>
@@ -307,20 +307,20 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
 
             {/* Failed URLs with option to add manually */}
             {failedUrls.length > 0 && !isProcessing && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm font-medium text-amber-800 mb-2">
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
                   <AlertCircle size={14} className="inline mr-1" />
                   {failedUrls.length} URL{failedUrls.length !== 1 ? 's' : ''} could not be resolved
                 </p>
                 <div className="space-y-2">
                   {failedUrls.map((failed, idx) => (
                     <div key={idx} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate text-amber-700">
+                      <span className="truncate text-amber-700 dark:text-amber-400">
                         {failed.url.length > 40 ? failed.url.substring(0, 40) + '...' : failed.url}
                       </span>
                       <button
                         onClick={() => handleAddManuallyFromFailed(failed)}
-                        className="text-primary-600 hover:text-primary-800 font-medium whitespace-nowrap"
+                        className="text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium whitespace-nowrap"
                       >
                         Add manually
                       </button>
@@ -331,15 +331,15 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
             )}
 
             {!settings.claudeApiKey && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
                   <AlertCircle size={14} className="inline mr-1" />
                   Claude API key not set. Add your API key in Settings for better parsing.
                 </p>
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
               {validationComplete ? (
                 <Button variant="primary" onClick={handleClose}>
                   Close
@@ -365,7 +365,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
           <>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -373,12 +373,12 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
                   placeholder="e.g., 2 Bed Flat in Shoreditch"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Address <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -386,15 +386,15 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   value={manualAddress}
                   onChange={(e) => { setManualAddress(e.target.value); setManualError(''); }}
                   placeholder="e.g., 123 High Street, London E1 6AB"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Enter the full address including postcode for accurate location
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Price (optional)
                 </label>
                 <input
@@ -402,12 +402,12 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   value={manualPrice}
                   onChange={(e) => setManualPrice(e.target.value)}
                   placeholder="e.g., £2,500 pcm"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Listing URL (optional)
                 </label>
                 <input
@@ -415,7 +415,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   value={manualUrl}
                   onChange={(e) => setManualUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -425,9 +425,9 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   id="manual-btr"
                   checked={manualIsBTR}
                   onChange={(e) => setManualIsBTR(e.target.checked)}
-                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 dark:bg-gray-700"
                 />
-                <label htmlFor="manual-btr" className="text-sm text-gray-700 flex items-center gap-1.5 cursor-pointer">
+                <label htmlFor="manual-btr" className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5 cursor-pointer">
                   <span className="bg-purple-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">BTR</span>
                   Build to Rent property
                 </label>
@@ -435,15 +435,15 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
             </div>
 
             {manualError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-800 dark:text-red-300">
                   <AlertCircle size={14} className="inline mr-1" />
                   {manualError}
                 </p>
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
               <Button variant="secondary" onClick={handleClose} disabled={isGeocodingManual}>
                 Cancel
               </Button>

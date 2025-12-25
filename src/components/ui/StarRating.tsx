@@ -36,7 +36,7 @@ export function StarRating({ rating, onChange, size = 'md', readonly = false }: 
             className={`transition-colors ${
               rating !== null && star <= rating
                 ? 'fill-amber-400 text-amber-400'
-                : 'fill-transparent text-gray-300'
+                : 'fill-transparent text-gray-300 dark:text-gray-600'
             } ${!readonly && 'hover:text-amber-400'}`}
           />
         </button>

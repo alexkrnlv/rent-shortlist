@@ -22,7 +22,7 @@ export function Layout({
   onMobileSidebarClose,
 }: LayoutProps) {
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-50">
+    <div className="h-screen w-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {header}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Backdrop overlay for mobile sidebar */}
@@ -37,14 +37,14 @@ export function Layout({
         {viewMode === 'map' && (
           <>
             {/* Desktop sidebar - always visible */}
-            <aside className="hidden md:flex md:w-[380px] bg-white border-r border-gray-200 flex-col">
+            <aside className="hidden md:flex md:w-[380px] bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col">
               {sidebar}
             </aside>
             
             {/* Mobile sidebar - overlay drawer */}
             <aside
               className={`
-                fixed inset-y-0 left-0 w-[85vw] max-w-[380px] bg-white border-r border-gray-200 
+                fixed inset-y-0 left-0 w-[85vw] max-w-[380px] bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
                 flex flex-col z-50 md:hidden
                 transform transition-transform duration-300 ease-in-out
                 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}

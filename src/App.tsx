@@ -183,7 +183,7 @@ function App() {
       {/* Copied toast notification */}
       {showCopiedToast && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
-          <div className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg flex items-center gap-2">
+          <div className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm font-medium rounded-lg shadow-lg flex items-center gap-2">
             <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>

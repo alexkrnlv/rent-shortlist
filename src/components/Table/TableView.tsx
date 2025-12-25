@@ -62,7 +62,7 @@ function EditableCell({ value, onSave, placeholder = 'Add...', className = '' }:
           type="text"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
-          className="w-full text-sm px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="w-full text-sm px-2 py-1 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSave();
@@ -72,7 +72,7 @@ function EditableCell({ value, onSave, placeholder = 'Add...', className = '' }:
         <button onClick={handleSave} className="p-1 text-green-600 hover:text-green-800">
           <Check size={14} />
         </button>
-        <button onClick={handleCancel} className="p-1 text-gray-400 hover:text-gray-600">
+        <button onClick={handleCancel} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
           <X size={14} />
         </button>
       </div>
@@ -82,7 +82,7 @@ function EditableCell({ value, onSave, placeholder = 'Add...', className = '' }:
   return (
     <span
       onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-      className={`cursor-pointer hover:bg-gray-100 px-1 py-0.5 rounded flex items-center gap-1 group ${className}`}
+      className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 rounded flex items-center gap-1 group ${className}`}
       title="Click to edit"
     >
       {value || <span className="text-gray-400">{placeholder}</span>}
@@ -124,13 +124,13 @@ function TagPicker({ propertyTags, availableTags, onToggle }: TagPickerProps) {
         <div className="relative">
           <button
             onClick={() => setShowPicker(!showPicker)}
-            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           >
             <Plus size={10} />
           </button>
           
           {showPicker && (
-            <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[120px]">
+            <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[120px]">
               {availableTags.filter(t => !propertyTags.includes(t.id)).length === 0 ? (
                 <p className="text-[10px] text-gray-400 px-1">All tags applied</p>
               ) : (
@@ -138,7 +138,7 @@ function TagPicker({ propertyTags, availableTags, onToggle }: TagPickerProps) {
                   <button
                     key={tag.id}
                     onClick={() => { onToggle(tag.id); setShowPicker(false); }}
-                    className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-xs hover:bg-gray-50 text-left"
+                    className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-700 text-left text-gray-700 dark:text-gray-300"
                   >
                     <span
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -183,7 +183,7 @@ function CommentCell({ comment, onSave }: CommentCellProps) {
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           placeholder="Add comment..."
-          className="w-full text-xs px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="w-full text-xs px-2 py-1 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSave();
@@ -200,7 +200,7 @@ function CommentCell({ comment, onSave }: CommentCellProps) {
   return (
     <button
       onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-      className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
     >
       <MessageSquare size={12} />
       {comment ? (
@@ -294,13 +294,13 @@ export function TableView() {
 
   if (properties.length === 0 && !hasActiveFilters) {
     return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-2xl flex items-center justify-center">
-            <MapPin size={32} className="text-gray-400" />
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
+            <MapPin size={32} className="text-gray-400 dark:text-gray-500" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Properties Found</h3>
-          <p className="text-gray-500 max-w-sm">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Properties Found</h3>
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm">
             Add some properties to see them in the comparison table.
           </p>
         </div>
@@ -309,24 +309,24 @@ export function TableView() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       {/* Search & Filter Bar */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-4 py-3 flex items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search properties..."
               value={filters.searchQuery}
               onChange={(e) => setFilters({ searchQuery: e.target.value })}
-              className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {filters.searchQuery && (
               <button
                 onClick={() => setFilters({ searchQuery: '' })}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X size={16} />
               </button>
@@ -355,23 +355,23 @@ export function TableView() {
           )}
           
           {/* Property Count */}
-          <div className="hidden sm:block text-sm text-gray-600">
-            <span className="font-semibold text-gray-900">{properties.length}</span> properties
+          <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-400">
+            <span className="font-semibold text-gray-900 dark:text-white">{properties.length}</span> properties
           </div>
         </div>
         
         {/* Expanded Filters */}
         {showFilters && (
-          <div className="px-4 pb-4 pt-2 border-t border-gray-100 bg-gray-50/50 animate-slideUp">
+          <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 animate-slideUp">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {/* Sort */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Sort By</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Sort By</label>
                 <div className="flex gap-2">
                   <select
                     value={filters.sortBy}
                     onChange={(e) => setFilters({ sortBy: e.target.value as SortField })}
-                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="rating">Rating</option>
                     <option value="distance">Distance</option>
@@ -381,7 +381,7 @@ export function TableView() {
                   </select>
                   <button
                     onClick={() => setFilters({ sortDirection: filters.sortDirection === 'asc' ? 'desc' : 'asc' })}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     {filters.sortDirection === 'asc' ? '↑' : '↓'}
                   </button>
@@ -390,21 +390,21 @@ export function TableView() {
               
               {/* BTR Only */}
               <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer h-9 px-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <label className="flex items-center gap-2 cursor-pointer h-9 px-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                   <input
                     type="checkbox"
                     checked={filters.btrOnly}
                     onChange={(e) => setFilters({ btrOnly: e.target.checked })}
-                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 dark:bg-gray-700"
                   />
-                  <Building2 size={14} className="text-purple-600" />
-                  <span className="text-sm text-gray-700">BTR only</span>
+                  <Building2 size={14} className="text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">BTR only</span>
                 </label>
               </div>
               
               {/* Min Rating */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Min Rating: {filters.minRating ? `${filters.minRating}+` : 'Any'}
                 </label>
                 <StarRating
@@ -416,7 +416,7 @@ export function TableView() {
               
               {/* Max Distance */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Max Distance: {filters.maxDistance ? filters.maxDistance + ' km' : 'Any'}
                 </label>
                 <input
@@ -426,37 +426,37 @@ export function TableView() {
                   step="1"
                   value={filters.maxDistance || 0}
                   onChange={(e) => setFilters({ maxDistance: parseInt(e.target.value) || null })}
-                  className="w-full"
+                  className="w-full accent-primary-600"
                 />
               </div>
               
               {/* Price Range */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Min £</label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Min £</label>
                   <input
                     type="number"
                     placeholder="0"
                     value={filters.minPrice || ''}
                     onChange={(e) => setFilters({ minPrice: parseInt(e.target.value) || null })}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Max £</label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Max £</label>
                   <input
                     type="number"
                     placeholder="Any"
                     value={filters.maxPrice || ''}
                     onChange={(e) => setFilters({ maxPrice: parseInt(e.target.value) || null })}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
               
               {/* Tags Filter */}
               <div className="sm:col-span-2 lg:col-span-1 xl:col-span-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1">
                   <Tag size={12} /> Tags
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -467,8 +467,8 @@ export function TableView() {
                       className={`
                         inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border-2
                         ${(filters.selectedTags || []).includes(tag.id)
-                          ? 'border-gray-800 shadow-sm'
-                          : 'border-transparent hover:border-gray-300'
+                          ? 'border-gray-800 dark:border-gray-200 shadow-sm'
+                          : 'border-transparent hover:border-gray-300 dark:hover:border-gray-500'
                         }
                       `}
                       style={{ backgroundColor: tag.color + '20', color: tag.color }}
@@ -485,7 +485,7 @@ export function TableView() {
                         onChange={(e) => setNewTagName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                         placeholder="Name"
-                        className="w-16 px-2 py-0.5 text-xs border border-gray-300 rounded focus:outline-none"
+                        className="w-16 px-2 py-0.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
                         autoFocus
                       />
                       <div className="flex gap-0.5">
@@ -493,18 +493,18 @@ export function TableView() {
                           <button
                             key={color}
                             onClick={() => setNewTagColor(color)}
-                            className={`w-3 h-3 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`}
+                            className={`w-3 h-3 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500' : ''}`}
                             style={{ backgroundColor: color }}
                           />
                         ))}
                       </div>
                       <button onClick={handleAddTag} className="text-green-600"><Plus size={12} /></button>
-                      <button onClick={() => setShowTagInput(false)} className="text-gray-400"><X size={12} /></button>
+                      <button onClick={() => setShowTagInput(false)} className="text-gray-400 dark:hover:text-gray-300"><X size={12} /></button>
                     </div>
                   ) : (
                     <button
                       onClick={() => setShowTagInput(true)}
-                      className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
                     >
                       <Plus size={10} /> Add
                     </button>
@@ -520,9 +520,9 @@ export function TableView() {
       {properties.length === 0 && hasActiveFilters && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center p-8">
-            <Filter size={48} className="mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No matching properties</h3>
-            <p className="text-gray-500 mb-4">Try adjusting your filters</p>
+            <Filter size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No matching properties</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">Try adjusting your filters</p>
             <Button variant="secondary" onClick={resetFilters}>
               <RotateCcw size={14} className="mr-1.5" />
               Reset Filters
@@ -592,23 +592,23 @@ export function TableView() {
                     key={property.id}
                     onClick={() => handleRowClick(property)}
                     className={`
-                      border-b border-gray-100 cursor-pointer transition-all duration-200
+                      border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-all duration-200
                       ${selectedPropertyId === property.id
-                        ? 'bg-primary-50 border-l-4 border-l-primary-500'
+                        ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-l-primary-500'
                         : index % 2 === 0
-                          ? 'bg-white hover:bg-gray-50'
-                          : 'bg-gray-50/50 hover:bg-gray-100/80'
+                          ? 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          : 'bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/80 dark:hover:bg-gray-700'
                       }
                     `}
                   >
                     {/* Thumbnail */}
                     <td className="py-2 px-3">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 shadow-sm">
                         {property.thumbnail ? (
                           <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <MapPin size={16} className="text-gray-400" />
+                            <MapPin size={16} className="text-gray-400 dark:text-gray-500" />
                           </div>
                         )}
                       </div>
@@ -619,7 +619,7 @@ export function TableView() {
                       <div className="flex items-start gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-gray-900 text-sm truncate max-w-[180px]">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm truncate max-w-[180px]">
                               {property.name || 'Untitled'}
                             </p>
                             <button
@@ -629,8 +629,8 @@ export function TableView() {
                               }}
                               className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
                                 property.isBTR
-                                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/60'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                               }`}
                               title={property.isBTR ? 'Click to unmark BTR' : 'Click to mark as BTR'}
                             >
@@ -643,7 +643,7 @@ export function TableView() {
                               value={property.address}
                               onSave={(value) => updateProperty(property.id, { address: value })}
                               placeholder="Add address"
-                              className="text-xs text-gray-500 max-w-[200px] truncate"
+                              className="text-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate"
                             />
                           </div>
                         </div>
@@ -656,7 +656,7 @@ export function TableView() {
                         value={property.price || ''}
                         onSave={(value) => updateProperty(property.id, { price: value })}
                         placeholder="Add price"
-                        className="font-bold text-primary-700"
+                        className="font-bold text-primary-700 dark:text-primary-400"
                       />
                     </td>
 
@@ -673,8 +673,8 @@ export function TableView() {
                     <td className="py-2 px-3">
                       {property.distances ? (
                         <div className="flex items-center gap-1 text-sm">
-                          <Navigation size={12} className="text-gray-500" />
-                          <span className="font-medium text-gray-700">
+                          <Navigation size={12} className="text-gray-500 dark:text-gray-400" />
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
                             {property.distances.direct.toFixed(1)} km
                           </span>
                         </div>
@@ -686,7 +686,7 @@ export function TableView() {
                     {/* Public Transport Time */}
                     <td className="py-2 px-3">
                       {property.distances?.publicTransport ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-medium">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium">
                           <Train size={10} />
                           {property.distances.publicTransport.duration}
                         </span>
@@ -698,7 +698,7 @@ export function TableView() {
                     {/* Walking Time */}
                     <td className="py-2 px-3">
                       {property.distances?.walking ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px] font-medium">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-[10px] font-medium">
                           <PersonStanding size={10} />
                           {property.distances.walking.duration}
                         </span>
@@ -710,7 +710,7 @@ export function TableView() {
                     {/* Driving Time */}
                     <td className="py-2 px-3">
                       {property.distances?.driving ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded text-[10px] font-medium">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded text-[10px] font-medium">
                           <Car size={10} />
                           {property.distances.driving.duration}
                         </span>
@@ -745,7 +745,7 @@ export function TableView() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                            className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
                             title="View listing"
                           >
                             <ExternalLink size={14} />
@@ -756,7 +756,7 @@ export function TableView() {
                             e.stopPropagation();
                             removeProperty(property.id);
                           }}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                           title="Remove property"
                         >
                           <Trash2 size={14} />
@@ -779,21 +779,21 @@ export function TableView() {
               key={property.id}
               onClick={() => handleRowClick(property)}
               className={`
-                bg-white rounded-xl shadow-sm border overflow-hidden transition-all duration-200
+                bg-white dark:bg-gray-800 rounded-xl shadow-sm border overflow-hidden transition-all duration-200
                 ${selectedPropertyId === property.id
-                  ? 'border-primary-500 ring-2 ring-primary-100'
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                  ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
                 }
               `}
             >
               {/* Card Header */}
               <div className="flex items-start gap-3 p-4">
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0">
                   {property.thumbnail ? (
                     <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <MapPin size={24} className="text-gray-400" />
+                      <MapPin size={24} className="text-gray-400 dark:text-gray-500" />
                     </div>
                   )}
                 </div>
@@ -802,28 +802,28 @@ export function TableView() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900 text-sm">{property.name || 'Untitled'}</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{property.name || 'Untitled'}</h3>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             updateProperty(property.id, { isBTR: !property.isBTR });
                           }}
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            property.isBTR ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-400'
+                            property.isBTR ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
                           }`}
                         >
                           <Building2 size={10} />
                           BTR
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{property.address}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{property.address}</p>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
                       <EditableCell
                         value={property.price || ''}
                         onSave={(value) => updateProperty(property.id, { price: value })}
                         placeholder="Price"
-                        className="font-bold text-primary-700 shrink-0"
+                        className="font-bold text-primary-700 dark:text-primary-400 shrink-0"
                       />
                     </div>
                   </div>
@@ -840,33 +840,33 @@ export function TableView() {
 
               {/* Expandable Details */}
               <div
-                className={`border-t border-gray-100 overflow-hidden transition-all duration-300 ${
+                className={`border-t border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
                   expandedRow === property.id ? 'max-h-[500px]' : 'max-h-0'
                 }`}
               >
-                <div className="p-4 space-y-3 bg-gray-50/50">
+                <div className="p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/50">
                   {/* Distance & Transport */}
                   {property.distances && (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <Navigation size={14} className="text-gray-500" />
-                        <span className="font-medium text-gray-700">
+                        <Navigation size={14} className="text-gray-500 dark:text-gray-400" />
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
                           {property.distances.direct.toFixed(1)} km direct
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {property.distances.publicTransport && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-xs">
                             <Train size={12} /> {property.distances.publicTransport.duration}
                           </span>
                         )}
                         {property.distances.walking && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-full text-xs">
                             <PersonStanding size={12} /> {property.distances.walking.duration}
                           </span>
                         )}
                         {property.distances.driving && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 rounded-full text-xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded-full text-xs">
                             <Car size={12} /> {property.distances.driving.duration}
                           </span>
                         )}
@@ -876,7 +876,7 @@ export function TableView() {
 
                   {/* Tags */}
                   <div onClick={(e) => e.stopPropagation()}>
-                    <label className="text-xs text-gray-500 mb-1 block">Tags</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Tags</label>
                     <TagPicker
                       propertyTags={property.tags || []}
                       availableTags={tags}
@@ -910,7 +910,7 @@ export function TableView() {
                         e.stopPropagation();
                         removeProperty(property.id);
                       }}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-red-200 dark:border-red-800"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -921,7 +921,7 @@ export function TableView() {
               {/* Expand Toggle */}
               <button
                 onClick={(e) => toggleRowExpand(e, property.id)}
-                className="w-full py-2 px-4 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-1"
+                className="w-full py-2 px-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-1"
               >
                 {expandedRow === property.id ? (
                   <><ChevronUp size={14} /> Hide details</>

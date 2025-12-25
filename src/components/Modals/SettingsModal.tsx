@@ -72,7 +72,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       <div className="space-y-6">
         {/* Center Point Section */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <MapPin size={16} />
             Center Point (for distance calculations)
           </h3>
@@ -88,8 +88,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 }}
                 className={`px-3 py-1 text-xs rounded-full border transition-colors ${
                   centerName === preset.name
-                    ? 'bg-primary-100 border-primary-300 text-primary-700'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-400'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
                 {preset.name}
@@ -166,22 +166,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               startTutorial();
               onClose();
             }}
-            className="flex items-center gap-3 w-full px-4 py-3 text-left bg-gradient-to-r from-primary-50 to-blue-50 hover:from-primary-100 hover:to-blue-100 rounded-xl border border-primary-100 transition-all duration-200 group"
+            className="flex items-center gap-3 w-full px-4 py-3 text-left bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/30 dark:to-blue-900/30 hover:from-primary-100 hover:to-blue-100 dark:hover:from-primary-900/50 dark:hover:to-blue-900/50 rounded-xl border border-primary-100 dark:border-primary-800 transition-all duration-200 group"
           >
             <span className="text-2xl">🎓</span>
             <div className="flex-1">
-              <div className="font-medium text-gray-900 group-hover:text-primary-700 transition-colors">
+              <div className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-primary-700 dark:group-hover:text-primary-400 transition-colors">
                 Restart Tutorial
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 Take the guided tour again
               </div>
             </div>
-            <span className="text-gray-400 group-hover:text-primary-600 transition-colors">→</span>
+            <span className="text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">→</span>
           </button>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
           <Button variant="secondary" onClick={onClose} disabled={isRecalculating}>
             Cancel
           </Button>

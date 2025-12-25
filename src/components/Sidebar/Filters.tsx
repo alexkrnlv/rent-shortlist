@@ -49,10 +49,10 @@ export function Filters() {
   };
 
   return (
-    <div className="border-b border-gray-200 bg-gray-50">
+    <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 md:py-2 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors min-h-[44px] md:min-h-0"
+        className="w-full px-4 py-3 md:py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors min-h-[44px] md:min-h-0"
       >
         <span>Filters & Sort</span>
         {isExpanded ? <ChevronUp size={18} className="md:w-4 md:h-4" /> : <ChevronDown size={18} className="md:w-4 md:h-4" />}
@@ -62,12 +62,12 @@ export function Filters() {
         <div className="px-4 pb-4 space-y-4 animate-slideUp">
           {/* Sort */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Sort By</label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Sort By</label>
             <div className="flex gap-2">
               <select
                 value={filters.sortBy}
                 onChange={(e) => setFilters({ sortBy: e.target.value as SortField })}
-                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-3 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
+                className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 md:py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
               >
                 <option value="rating">Rating</option>
                 <option value="distance">Distance</option>
@@ -77,8 +77,8 @@ export function Filters() {
               </select>
               <button
                 onClick={toggleSortDirection}
-                className={`px-4 py-3 md:px-3 md:py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors flex items-center gap-1 min-w-[60px] min-h-[44px] md:min-w-0 md:min-h-0 ${
-                  filters.sortDirection === 'desc' ? 'bg-gray-100' : ''
+                className={`px-4 py-3 md:px-3 md:py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1 min-w-[60px] min-h-[44px] md:min-w-0 md:min-h-0 ${
+                  filters.sortDirection === 'desc' ? 'bg-gray-100 dark:bg-gray-700' : ''
                 }`}
                 title={filters.sortDirection === 'asc' ? 'Ascending' : 'Descending'}
               >
@@ -95,16 +95,16 @@ export function Filters() {
                 type="checkbox"
                 checked={filters.btrOnly}
                 onChange={(e) => setFilters({ btrOnly: e.target.checked })}
-                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 dark:bg-gray-700"
               />
-              <Building2 size={14} className="text-purple-600" />
-              <span className="text-sm text-gray-700">Show BTR only</span>
+              <Building2 size={14} className="text-purple-600 dark:text-purple-400" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Show BTR only</span>
             </label>
           </div>
 
           {/* Tags Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2 flex items-center gap-1">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
               <Tag size={12} />
               Tags
             </label>
@@ -147,7 +147,7 @@ export function Filters() {
                     onChange={(e) => setNewTagName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                     placeholder="Tag name"
-                    className="w-20 px-2 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="w-20 px-2 py-0.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
                     autoFocus
                   />
                   <div className="flex gap-0.5">
@@ -156,7 +156,7 @@ export function Filters() {
                         key={color}
                         onClick={() => setNewTagColor(color)}
                         aria-label={`Select ${color} color`}
-                        className={`w-4 h-4 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`}
+                        className={`w-4 h-4 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500' : ''}`}
                         style={{ backgroundColor: color }}
                       />
                     ))}
@@ -172,7 +172,7 @@ export function Filters() {
                       setShowTagInput(false);
                       setNewTagName('');
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
                     <X size={14} />
                   </button>
@@ -180,7 +180,7 @@ export function Filters() {
               ) : (
                 <button
                   onClick={() => setShowTagInput(true)}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   <Plus size={10} />
                   Add tag
@@ -191,7 +191,7 @@ export function Filters() {
 
           {/* Min Rating Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Min Rating: {filters.minRating ? `${filters.minRating}+ stars` : 'Any'}
             </label>
             <StarRating
@@ -203,7 +203,7 @@ export function Filters() {
 
           {/* Distance Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Max Distance: {filters.maxDistance ? filters.maxDistance + ' km' : 'Any'}
             </label>
             <input
@@ -213,30 +213,30 @@ export function Filters() {
               step="1"
               value={filters.maxDistance || 0}
               onChange={(e) => setFilters({ maxDistance: parseInt(e.target.value) || null })}
-              className="w-full"
+              className="w-full accent-primary-600"
             />
           </div>
 
           {/* Price Range */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Min Price</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Min Price</label>
               <input
                 type="number"
                 placeholder="0"
                 value={filters.minPrice || ''}
                 onChange={(e) => setFilters({ minPrice: parseInt(e.target.value) || null })}
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-3 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 md:py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Max Price</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Max Price</label>
               <input
                 type="number"
                 placeholder="Any"
                 value={filters.maxPrice || ''}
                 onChange={(e) => setFilters({ maxPrice: parseInt(e.target.value) || null })}
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-3 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 md:py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
               />
             </div>
           </div>

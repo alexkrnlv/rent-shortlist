@@ -93,19 +93,19 @@ export function ExportImportModal({ isOpen, onClose, mode }: ExportImportModalPr
     <Modal isOpen={isOpen} onClose={handleClose} title={mode === 'export' ? 'Export Data' : 'Import Data'} size="sm">
       {mode === 'export' ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-            <FileText size={24} className="text-gray-400" />
+          <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <FileText size={24} className="text-gray-400 dark:text-gray-500" />
             <div>
-              <p className="font-medium text-gray-900">{properties.length} properties</p>
-              <p className="text-sm text-gray-500">Will be exported to CSV</p>
+              <p className="font-medium text-gray-900 dark:text-white">{properties.length} properties</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Will be exported to CSV</p>
             </div>
           </div>
 
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Export all your properties to a CSV file that can be used as a backup or imported later.
           </p>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
             <Button variant="secondary" onClick={handleClose}>
               Cancel
             </Button>
@@ -117,9 +117,9 @@ export function ExportImportModal({ isOpen, onClose, mode }: ExportImportModalPr
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <Upload size={32} className="mx-auto text-gray-400 mb-3" />
-            <p className="text-sm text-gray-600 mb-3">
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+            <Upload size={32} className="mx-auto text-gray-400 dark:text-gray-500 mb-3" />
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               Select a CSV file exported from Rent Shortlist
             </p>
             <input
@@ -130,31 +130,31 @@ export function ExportImportModal({ isOpen, onClose, mode }: ExportImportModalPr
               className="hidden"
               id="csv-upload"
             />
-            <label htmlFor="csv-upload" className="inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-primary-500 px-4 py-2 text-sm cursor-pointer">
+            <label htmlFor="csv-upload" className="inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-primary-500 px-4 py-2 text-sm cursor-pointer">
               Choose File
             </label>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <input
               type="checkbox"
               checked={replaceExisting}
               onChange={(e) => setReplaceExisting(e.target.checked)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-700"
             />
             Replace existing properties
           </label>
 
           {importStatus !== 'idle' && (
             <div className={`p-3 rounded-lg flex items-center gap-2 ${
-              importStatus === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              importStatus === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300'
             }`}>
               {importStatus === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
               <span className="text-sm">{importMessage}</span>
             </div>
           )}
 
-          <div className="flex justify-end pt-4 border-t border-gray-100">
+          <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
             <Button variant="secondary" onClick={handleClose}>
               Close
             </Button>

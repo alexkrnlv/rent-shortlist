@@ -60,7 +60,7 @@ export function PropertyCard({
     <Card selected={isSelected} onClick={onClick} className="overflow-hidden">
       <div className="flex">
         {/* Thumbnail */}
-        <div className="w-24 h-24 flex-shrink-0 bg-gray-100 relative">
+        <div className="w-24 h-24 flex-shrink-0 bg-gray-100 dark:bg-gray-700 relative">
           {property.thumbnail ? (
             <img
               src={property.thumbnail}
@@ -69,7 +69,7 @@ export function PropertyCard({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <MapPin size={24} className="text-gray-400" />
+              <MapPin size={24} className="text-gray-400 dark:text-gray-500" />
             </div>
           )}
         </div>
@@ -78,7 +78,7 @@ export function PropertyCard({
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-gray-900 text-sm truncate">{property.name || 'Untitled Property'}</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{property.name || 'Untitled Property'}</h3>
               {/* Editable Address */}
               {isEditingAddress ? (
                 <div className="flex items-center gap-1 mt-0.5" onClick={(e) => e.stopPropagation()}>
@@ -86,7 +86,7 @@ export function PropertyCard({
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="flex-1 text-xs px-1.5 py-0.5 border rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="flex-1 text-xs px-1.5 py-0.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
                     placeholder="Enter address"
                     autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddressSave(); if (e.key === 'Escape') setIsEditingAddress(false); }}
@@ -94,13 +94,13 @@ export function PropertyCard({
                   <button onClick={handleAddressSave} className="p-2 md:p-0.5 text-green-600 hover:text-green-800 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center">
                     <Check size={14} className="md:w-3 md:h-3" />
                   </button>
-                  <button onClick={() => { setAddress(property.address || ''); setIsEditingAddress(false); }} className="p-2 md:p-0.5 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center">
+                  <button onClick={() => { setAddress(property.address || ''); setIsEditingAddress(false); }} className="p-2 md:p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center">
                     <X size={14} className="md:w-3 md:h-3" />
                   </button>
                 </div>
               ) : (
                 <p
-                  className="text-xs text-gray-500 truncate cursor-pointer hover:text-gray-700 flex items-center gap-1 group"
+                  className="text-xs text-gray-500 dark:text-gray-400 truncate cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 group"
                   onClick={(e) => { e.stopPropagation(); setIsEditingAddress(true); }}
                   title="Click to edit address"
                 >
@@ -114,8 +114,8 @@ export function PropertyCard({
               onClick={(e) => { e.stopPropagation(); onBTRChange(!property.isBTR); }}
               className={`px-3 py-2 md:px-2 md:py-0.5 rounded-full text-xs font-medium transition-colors min-h-[44px] md:min-h-0 flex items-center justify-center ${
                 property.isBTR
-                  ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/60'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
               title={property.isBTR ? 'Build to Rent - Click to remove' : 'Click to mark as Build to Rent'}
             >
@@ -141,7 +141,7 @@ export function PropertyCard({
                   type="text"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-24 text-sm px-2 py-0.5 border rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-24 text-sm px-2 py-0.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
                   placeholder="e.g., £1,500"
                   autoFocus
                   onKeyDown={(e) => { if (e.key === 'Enter') handlePriceSave(); if (e.key === 'Escape') setIsEditingPrice(false); }}
@@ -149,13 +149,13 @@ export function PropertyCard({
                 <button onClick={handlePriceSave} className="p-2 md:p-0.5 text-green-600 hover:text-green-800 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center">
                   <Check size={16} className="md:w-3.5 md:h-3.5" />
                 </button>
-                <button onClick={() => { setPrice(property.price || ''); setIsEditingPrice(false); }} className="p-2 md:p-0.5 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center">
+                <button onClick={() => { setPrice(property.price || ''); setIsEditingPrice(false); }} className="p-2 md:p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center">
                   <X size={16} className="md:w-3.5 md:h-3.5" />
                 </button>
               </div>
             ) : (
               <span
-                className="font-bold text-primary-700 cursor-pointer hover:text-primary-800 flex items-center gap-1 group"
+                className="font-bold text-primary-700 dark:text-primary-400 cursor-pointer hover:text-primary-800 dark:hover:text-primary-300 flex items-center gap-1 group"
                 onClick={() => setIsEditingPrice(true)}
                 title="Click to edit price"
               >
@@ -167,7 +167,7 @@ export function PropertyCard({
 
           {/* Distances */}
           {property.distances && (
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1">
                 <Navigation size={12} /> {property.distances.direct.toFixed(1)}km
               </span>
@@ -214,7 +214,7 @@ export function PropertyCard({
               <div className="relative">
               <button
                 onClick={() => setShowTagPicker(!showTagPicker)}
-                className="inline-flex items-center gap-0.5 px-3 py-2 md:px-1.5 md:py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors min-h-[44px] md:min-h-0"
+                className="inline-flex items-center gap-0.5 px-3 py-2 md:px-1.5 md:py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors min-h-[44px] md:min-h-0"
               >
                 <Plus size={12} className="md:w-2.5 md:h-2.5" />
                 Tag
@@ -222,7 +222,7 @@ export function PropertyCard({
 
                 {/* Tag picker dropdown */}
                 {showTagPicker && (
-                  <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[120px]">
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[120px]">
                     {availableTags.filter(t => !propertyTags.includes(t.id)).length === 0 ? (
                       <p className="text-[10px] text-gray-400 px-1">All tags applied</p>
                     ) : (
@@ -230,7 +230,7 @@ export function PropertyCard({
                         <button
                           key={tag.id}
                           onClick={() => { onTagToggle(tag.id); setShowTagPicker(false); }}
-                          className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-xs hover:bg-gray-50 text-left"
+                          className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-xs hover:bg-gray-50 dark:hover:bg-gray-700 text-left text-gray-700 dark:text-gray-300"
                         >
                           <span
                             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -249,7 +249,7 @@ export function PropertyCard({
       </div>
 
       {/* Comment section */}
-      <div className="px-3 pb-3 border-t border-gray-100 mt-2 pt-2">
+      <div className="px-3 pb-3 border-t border-gray-100 dark:border-gray-700 mt-2 pt-2">
         {isEditingComment ? (
           <div className="flex gap-2">
             <input
@@ -257,13 +257,13 @@ export function PropertyCard({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 text-xs px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="flex-1 text-xs px-2 py-1 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter') handleCommentSave(); }}
             />
             <button
               onClick={(e) => { e.stopPropagation(); handleCommentSave(); }}
-              className="text-xs text-primary-600 font-medium px-4 py-2 md:px-0 md:py-0 min-h-[44px] md:min-h-0 flex items-center justify-center"
+              className="text-xs text-primary-600 dark:text-primary-400 font-medium px-4 py-2 md:px-0 md:py-0 min-h-[44px] md:min-h-0 flex items-center justify-center"
             >
               Save
             </button>
@@ -272,7 +272,7 @@ export function PropertyCard({
           <div className="flex items-center justify-between gap-2">
             {property.comment ? (
               <p
-                className="text-xs text-gray-600 flex-1 truncate cursor-pointer hover:text-gray-900"
+                className="text-xs text-gray-600 dark:text-gray-400 flex-1 truncate cursor-pointer hover:text-gray-900 dark:hover:text-gray-200"
                 onClick={(e) => { e.stopPropagation(); setIsEditingComment(true); }}
               >
                 <MessageSquare size={12} className="inline mr-1" />
@@ -281,7 +281,7 @@ export function PropertyCard({
             ) : (
               <button
                 onClick={(e) => { e.stopPropagation(); setIsEditingComment(true); }}
-                className="text-xs text-gray-400 hover:text-gray-600 px-3 py-2 md:px-0 md:py-0 min-h-[44px] md:min-h-0 flex items-center"
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-3 py-2 md:px-0 md:py-0 min-h-[44px] md:min-h-0 flex items-center"
               >
                 <MessageSquare size={14} className="inline mr-1 md:w-3 md:h-3" />
                 Add comment
@@ -294,7 +294,7 @@ export function PropertyCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1.5 px-4 py-3 md:px-3 md:py-1.5 bg-primary-50 text-primary-700 hover:bg-primary-100 rounded-lg text-xs font-medium transition-colors min-h-[44px] md:min-h-0"
+                  className="inline-flex items-center gap-1.5 px-4 py-3 md:px-3 md:py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded-lg text-xs font-medium transition-colors min-h-[44px] md:min-h-0"
                   title="Open listing"
                 >
                   <ExternalLink size={16} className="md:w-3.5 md:h-3.5" />
@@ -303,7 +303,7 @@ export function PropertyCard({
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="p-3 md:p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+                className="p-3 md:p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                 title="Remove property"
                 aria-label="Remove property"
               >

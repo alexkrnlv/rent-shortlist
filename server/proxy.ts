@@ -17,10 +17,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Serve static files from dist in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-}
+// Note: Static files are served AFTER API routes (see end of file)
 
 // SSE clients for real-time updates
 const sseClients: Set<express.Response> = new Set();
@@ -1512,8 +1509,12 @@ function extractBasicData(html: string, url: string): any {
   };
 }
 
-// SPA fallback - serve index.html for all non-API routes in production
+// Static files and SPA fallback - MUST be after all API routes
 if (process.env.NODE_ENV === 'production') {
+  // Serve static files from dist
+  app.use(express.static(path.join(__dirname, '../dist')));
+  
+  // SPA fallback - serve index.html for all non-API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });

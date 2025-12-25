@@ -1,5 +1,7 @@
-import { Settings, Download, Plus, Upload } from 'lucide-react';
+import { Settings, Download, Plus, Upload, Map, Table2 } from 'lucide-react';
 import { Button } from '../ui/Button';
+
+export type ViewMode = 'map' | 'table';
 
 interface HeaderProps {
   onAddClick: () => void;
@@ -7,9 +9,19 @@ interface HeaderProps {
   onExportClick: () => void;
   onImportClick: () => void;
   propertyCount: number;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
-export function Header({ onAddClick, onSettingsClick, onExportClick, onImportClick, propertyCount }: HeaderProps) {
+export function Header({
+  onAddClick,
+  onSettingsClick,
+  onExportClick,
+  onImportClick,
+  propertyCount,
+  viewMode,
+  onViewModeChange,
+}: HeaderProps) {
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-3">
@@ -25,23 +37,77 @@ export function Header({ onAddClick, onSettingsClick, onExportClick, onImportCli
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={onImportClick}>
-          <Upload size={18} className="mr-1.5" />
-          Import
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onExportClick}>
-          <Download size={18} className="mr-1.5" />
-          Export
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onSettingsClick}>
-          <Settings size={18} className="mr-1.5" />
-          Settings
-        </Button>
-        <Button variant="primary" size="sm" onClick={onAddClick}>
-          <Plus size={18} className="mr-1.5" />
-          Add Properties
-        </Button>
+      <div className="flex items-center gap-3">
+        {/* View Mode Toggle */}
+        <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => onViewModeChange('map')}
+            className={`
+              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+              ${viewMode === 'map'
+                ? 'bg-white text-primary-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+              }
+            `}
+            title="Map View"
+          >
+            <Map size={16} />
+            <span className="hidden md:inline">Map</span>
+          </button>
+          <button
+            onClick={() => onViewModeChange('table')}
+            className={`
+              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+              ${viewMode === 'table'
+                ? 'bg-white text-primary-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+              }
+            `}
+            title="Table View"
+          >
+            <Table2 size={16} />
+            <span className="hidden md:inline">Table</span>
+          </button>
+        </div>
+
+        <div className="hidden sm:block w-px h-6 bg-gray-200" />
+
+        {/* Mobile View Toggle */}
+        <div className="sm:hidden">
+          <button
+            onClick={() => onViewModeChange(viewMode === 'map' ? 'table' : 'map')}
+            className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+            title={viewMode === 'map' ? 'Switch to Table View' : 'Switch to Map View'}
+          >
+            {viewMode === 'map' ? <Table2 size={20} /> : <Map size={20} />}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onImportClick} className="hidden lg:inline-flex">
+            <Upload size={18} className="mr-1.5" />
+            Import
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onExportClick} className="hidden lg:inline-flex">
+            <Download size={18} className="mr-1.5" />
+            Export
+          </Button>
+          {/* Mobile Import/Export */}
+          <Button variant="ghost" size="sm" onClick={onImportClick} className="lg:hidden p-2">
+            <Upload size={18} />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onExportClick} className="lg:hidden p-2">
+            <Download size={18} />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onSettingsClick}>
+            <Settings size={18} className="lg:mr-1.5" />
+            <span className="hidden lg:inline">Settings</span>
+          </Button>
+          <Button variant="primary" size="sm" onClick={onAddClick}>
+            <Plus size={18} className="lg:mr-1.5" />
+            <span className="hidden lg:inline">Add Properties</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

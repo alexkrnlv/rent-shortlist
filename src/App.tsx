@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Layout } from './components/Layout/Layout';
-import { Header } from './components/Layout/Header';
+import { Header, ViewMode } from './components/Layout/Header';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { MapView } from './components/Map/MapView';
+import { TableView } from './components/Table/TableView';
 import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
@@ -16,11 +17,13 @@ function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('map');
   const { properties } = usePropertyStore();
 
   return (
     <>
       <Layout
+        viewMode={viewMode}
         header={
           <Header
             onAddClick={() => setShowAddModal(true)}
@@ -28,10 +31,13 @@ function App() {
             onExportClick={() => setShowExportModal(true)}
             onImportClick={() => setShowImportModal(true)}
             propertyCount={properties.length}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
         }
         sidebar={<Sidebar />}
         map={<MapView />}
+        table={<TableView />}
       />
 
       <AddPropertyModal

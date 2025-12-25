@@ -11,6 +11,11 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent text size adjustment on iOS */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Improve touch scrolling on mobile */
+  -webkit-overflow-scrolling: touch;
 }
 
 #root {
@@ -164,6 +169,27 @@ body {
   .mobile-card-grid {
     display: grid;
     gap: 1rem;
+  }
+  
+  /* Improve touch targets on mobile */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
+  }
+  
+  /* Better spacing for mobile cards */
+  .property-card {
+    padding: 0.75rem;
+  }
+}
+
+/* Mobile sidebar drawer animation */
+@media (max-width: 768px) {
+  .sidebar-drawer {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .sidebar-backdrop {
+    transition: opacity 0.3s ease-in-out;
   }
 }
 

@@ -1,10 +1,13 @@
-import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
+import { decompressFromEncodedURIComponent } from 'lz-string';
 import type { Property, PropertyTag, CenterPoint, Filters } from '../types';
 
 // Version for future migrations
 const CURRENT_VERSION = 1;
 
-// URL session state structure (short keys to minimize URL size)
+// API base URL
+const API_BASE = '/api';
+
+// URL session state structure
 export interface UrlSessionState {
   v: number;          // version
   p: Property[];      // properties
@@ -13,7 +16,7 @@ export interface UrlSessionState {
   f: Filters;         // filters
 }
 
-// Minimum keys for a valid state
+// Default values
 const DEFAULT_CENTER: CenterPoint = {
   name: 'Bank of England, London',
   lat: 51.5142,
@@ -32,41 +35,158 @@ const DEFAULT_FILTERS: Filters = {
   sortDirection: 'desc',
 };
 
-/**
- * Encode session state to a URL-safe compressed string
- */
-export function encodeSessionState(state: UrlSessionState): string {
-  const json = JSON.stringify(state);
-  return compressToEncodedURIComponent(json);
+// ============================================
+// Server-side Session API
+// ============================================
+
+interface SaveSessionResponse {
+  id: string;
+  url: string;
+}
+
+interface LoadSessionResponse {
+  id: string;
+  data: UrlSessionState;
 }
 
 /**
- * Decode a compressed URL string back to session state
+ * Save session to server and get a friendly short URL
  */
-export function decodeSessionState(encoded: string): UrlSessionState | null {
+export async function saveSession(
+  state: UrlSessionState,
+  existingId?: string
+): Promise<SaveSessionResponse | null> {
   try {
-    const json = decompressFromEncodedURIComponent(encoded);
-    if (!json) return null;
-    
-    const state = JSON.parse(json) as UrlSessionState;
-    
-    // Validate basic structure
-    if (typeof state.v !== 'number' || !Array.isArray(state.p)) {
-      return null;
+    const response = await fetch(`${API_BASE}/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: existingId, data: state }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save session: ${response.status}`);
     }
-    
-    // Future: handle version migrations here
-    if (state.v !== CURRENT_VERSION) {
-      console.warn(`URL session version mismatch: expected ${CURRENT_VERSION}, got ${state.v}`);
-      // For now, still try to use it
-    }
-    
-    return state;
+
+    return await response.json();
   } catch (error) {
-    console.error('Failed to decode session state:', error);
+    console.error('Error saving session:', error);
     return null;
   }
 }
+
+/**
+ * Load session from server by ID
+ */
+export async function loadSession(id: string): Promise<UrlSessionState | null> {
+  try {
+    const response = await fetch(`${API_BASE}/sessions/${id}`);
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Failed to load session: ${response.status}`);
+    }
+
+    const result: LoadSessionResponse = await response.json();
+    return result.data;
+  } catch (error) {
+    console.error('Error loading session:', error);
+    return null;
+  }
+}
+
+// ============================================
+// URL Parsing
+// ============================================
+
+/**
+ * Extract session ID from URL path (e.g., /s/sunny-flat-42)
+ */
+export function getSessionIdFromUrl(): string | null {
+  const path = window.location.pathname;
+  const match = path.match(/^\/s\/([a-z0-9-]+)$/i);
+  return match ? match[1] : null;
+}
+
+/**
+ * Check if URL has a session (either /s/:id or legacy hash)
+ */
+export function hasSessionInUrl(): boolean {
+  return getSessionIdFromUrl() !== null || getUrlHash().length > 0;
+}
+
+/**
+ * Get the current session ID (stored in localStorage after first save)
+ */
+export function getCurrentSessionId(): string | null {
+  return localStorage.getItem('rent-shortlist-session-id');
+}
+
+/**
+ * Store the current session ID
+ */
+export function setCurrentSessionId(id: string): void {
+  localStorage.setItem('rent-shortlist-session-id', id);
+}
+
+/**
+ * Update browser URL to show the session
+ */
+export function updateUrlWithSession(sessionId: string): void {
+  const newUrl = `/s/${sessionId}`;
+  if (window.location.pathname !== newUrl) {
+    window.history.replaceState(null, '', newUrl);
+  }
+}
+
+/**
+ * Get the full shareable URL for a session
+ */
+export function getShareableUrl(sessionId?: string): string {
+  const id = sessionId || getCurrentSessionId();
+  if (id) {
+    return `${window.location.origin}/s/${id}`;
+  }
+  return window.location.href;
+}
+
+// ============================================
+// Legacy Hash-based Support (for migration)
+// ============================================
+
+/**
+ * Get the current URL hash (without the # prefix)
+ */
+export function getUrlHash(): string {
+  return window.location.hash.slice(1);
+}
+
+/**
+ * Decode legacy hash-based session
+ */
+export function decodeLegacySession(encoded: string): UrlSessionState | null {
+  try {
+    const json = decompressFromEncodedURIComponent(encoded);
+    if (!json) return null;
+
+    const state = JSON.parse(json) as UrlSessionState;
+
+    if (typeof state.v !== 'number' || !Array.isArray(state.p)) {
+      return null;
+    }
+
+    return state;
+  } catch (error) {
+    console.error('Failed to decode legacy session:', error);
+    return null;
+  }
+}
+
+// ============================================
+// State Building
+// ============================================
 
 /**
  * Build a complete session state from store data
@@ -87,26 +207,21 @@ export function buildSessionState(
 }
 
 /**
- * Get the current URL hash (without the # prefix)
+ * Create an empty/default session state
  */
-export function getUrlHash(): string {
-  return window.location.hash.slice(1); // Remove the # prefix
+export function createEmptySession(): UrlSessionState {
+  return {
+    v: CURRENT_VERSION,
+    p: [],
+    t: [],
+    c: DEFAULT_CENTER,
+    f: DEFAULT_FILTERS,
+  };
 }
 
-/**
- * Set the URL hash without triggering a navigation
- */
-export function setUrlHash(hash: string): void {
-  const newUrl = `${window.location.pathname}${window.location.search}#${hash}`;
-  window.history.replaceState(null, '', newUrl);
-}
-
-/**
- * Get the full shareable URL with current session
- */
-export function getShareableUrl(): string {
-  return window.location.href;
-}
+// ============================================
+// Utilities
+// ============================================
 
 /**
  * Copy text to clipboard with fallback
@@ -147,42 +262,3 @@ export function hasSeenWelcomeModal(): boolean {
 export function markWelcomeModalSeen(): void {
   localStorage.setItem('rent-shortlist-welcome-seen', 'true');
 }
-
-/**
- * Check if URL has a session hash
- */
-export function hasSessionInUrl(): boolean {
-  const hash = getUrlHash();
-  return hash.length > 0;
-}
-
-/**
- * Estimate the size of the encoded URL
- */
-export function getEncodedSize(encoded: string): number {
-  return encoded.length;
-}
-
-/**
- * Check if URL is approaching browser limits (warn at 6KB, error at 8KB)
- */
-export function checkUrlLength(encoded: string): 'ok' | 'warning' | 'error' {
-  const size = getEncodedSize(encoded);
-  if (size > 8000) return 'error';
-  if (size > 6000) return 'warning';
-  return 'ok';
-}
-
-/**
- * Create an empty/default session state
- */
-export function createEmptySession(): UrlSessionState {
-  return {
-    v: CURRENT_VERSION,
-    p: [],
-    t: [],
-    c: DEFAULT_CENTER,
-    f: DEFAULT_FILTERS,
-  };
-}
-

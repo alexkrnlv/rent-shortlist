@@ -112,7 +112,7 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
       mapPaneName={OverlayView.FLOAT_PANE}
     >
       <div
-        className="bg-white rounded-lg shadow-xl border border-gray-200 min-w-[280px] max-w-[320px]"
+        className="bg-white rounded-lg shadow-xl border border-gray-200 w-[calc(100vw-2rem)] max-w-[320px] min-w-[240px] md:min-w-[280px]"
         style={{
           transform: 'translate(-50%, -100%)',
           marginTop: '-70px',
@@ -123,9 +123,10 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
       >
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 z-10 p-1 bg-white rounded-full shadow hover:bg-gray-100"
+          className="absolute top-2 right-2 z-10 p-2 md:p-1 bg-white rounded-full shadow hover:bg-gray-100 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+          aria-label="Close popup"
         >
-          <X size={16} className="text-gray-600" />
+          <X size={18} className="text-gray-600 md:w-4 md:h-4" />
         </button>
 
         {property.thumbnail && (
@@ -136,16 +137,16 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
           />
         )}
 
-        <div className="p-3">
+        <div className="p-3 md:p-3">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-gray-900 mb-1 pr-6 flex-1">{property.name}</h3>
+            <h3 className="font-semibold text-gray-900 mb-1 pr-8 md:pr-6 flex-1 text-sm md:text-base">{property.name}</h3>
             {property.isBTR && (
-              <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded">
+              <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded flex-shrink-0">
                 BTR
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-600 mb-2">{property.address}</p>
+          <p className="text-xs md:text-sm text-gray-600 mb-2">{property.address}</p>
 
           {/* Rating */}
           <div className="mb-2">
@@ -153,30 +154,30 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
           </div>
 
           {property.price && (
-            <p className="text-lg font-bold text-primary-700 mb-3">{property.price}</p>
+            <p className="text-base md:text-lg font-bold text-primary-700 mb-3">{property.price}</p>
           )}
 
           {property.distances && (
-            <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
               <div className="flex items-center gap-1.5 text-gray-600">
-                <Navigation size={14} />
+                <Navigation size={12} className="md:w-3.5 md:h-3.5" />
                 <span>{property.distances.direct.toFixed(1)}km direct</span>
               </div>
               {property.distances.publicTransport && (
                 <div className="flex items-center gap-1.5 text-gray-600">
-                  <Train size={14} />
+                  <Train size={12} className="md:w-3.5 md:h-3.5" />
                   <span>{property.distances.publicTransport.duration}</span>
                 </div>
               )}
               {property.distances.walking && (
                 <div className="flex items-center gap-1.5 text-gray-600">
-                  <PersonStanding size={14} />
+                  <PersonStanding size={12} className="md:w-3.5 md:h-3.5" />
                   <span>{property.distances.walking.duration}</span>
                 </div>
               )}
               {property.distances.driving && (
                 <div className="flex items-center gap-1.5 text-gray-600">
-                  <Car size={14} />
+                  <Car size={12} className="md:w-3.5 md:h-3.5" />
                   <span>{property.distances.driving.duration}</span>
                 </div>
               )}
@@ -188,7 +189,7 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
               href={property.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-center py-2 px-4 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
+              className="block text-center py-3 md:py-2 px-4 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors min-h-[44px] md:min-h-0 flex items-center justify-center"
             >
               View Listing
             </a>

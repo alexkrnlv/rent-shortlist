@@ -1,25 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Copy, Check, Bookmark, Link2 } from 'lucide-react';
+import { Copy, Check, Bookmark, Link2, Loader2 } from 'lucide-react';
 import { getShareableUrl, copyToClipboard, markWelcomeModalSeen } from '../../utils/urlSession';
 
 interface WelcomeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  sessionId: string | null;
 }
 
-export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
+export function WelcomeModal({ isOpen, onClose, sessionId }: WelcomeModalProps) {
   const [copied, setCopied] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [shareableUrl, setShareableUrl] = useState('');
 
   useEffect(() => {
-    if (isOpen) {
-      setShareableUrl(getShareableUrl());
+    if (isOpen && sessionId) {
+      setShareableUrl(getShareableUrl(sessionId));
       setCopied(false);
     }
-  }, [isOpen]);
+  }, [isOpen, sessionId]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(shareableUrl);
@@ -41,6 +42,9 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
     onClose();
   };
 
+  // Show loading state while session is being created
+  const isLoading = !sessionId;
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Save Your Session" size="md">
       <div className="space-y-5">
@@ -52,7 +56,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           <div>
             <h3 className="font-medium text-gray-900 mb-1">Your data lives in the URL</h3>
             <p className="text-sm text-gray-600">
-              All your properties are saved in the URL. Bookmark it to keep your shortlist, 
+              All your properties are saved with a short, friendly URL. Bookmark it to keep your shortlist, 
               or share it with friends and family!
             </p>
           </div>
@@ -61,35 +65,49 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
         {/* URL Display */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">Your unique session URL:</label>
-          <div className="flex gap-2">
-            <div className="flex-1 min-w-0">
-              <input
-                type="text"
-                readOnly
-                value={shareableUrl}
-                className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-600 truncate focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-              />
+          {isLoading ? (
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              <span className="text-sm text-gray-500">Creating your session...</span>
             </div>
-            <Button
-              variant={copied ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={handleCopy}
-              className="shrink-0 min-w-[100px]"
-            >
-              {copied ? (
-                <>
-                  <Check size={16} className="mr-1.5" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy size={16} className="mr-1.5" />
-                  Copy
-                </>
-              )}
-            </Button>
-          </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareableUrl}
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-medium"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+              </div>
+              <Button
+                variant={copied ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={handleCopy}
+                className="shrink-0 min-w-[100px]"
+              >
+                {copied ? (
+                  <>
+                    <Check size={16} className="mr-1.5" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} className="mr-1.5" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+          
+          {/* Show the friendly URL format */}
+          {sessionId && (
+            <p className="text-xs text-gray-500">
+              Your session ID: <code className="px-1.5 py-0.5 bg-gray-100 rounded font-mono text-primary-600">{sessionId}</code>
+            </p>
+          )}
         </div>
 
         {/* Instructions */}
@@ -130,7 +148,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           <Button variant="secondary" size="md" onClick={handleClose} className="flex-1">
             Skip for now
           </Button>
-          <Button variant="primary" size="md" onClick={handleSaveAndClose} className="flex-1">
+          <Button variant="primary" size="md" onClick={handleSaveAndClose} className="flex-1" disabled={isLoading}>
             <Bookmark size={16} className="mr-1.5" />
             I've saved it
           </Button>
@@ -139,4 +157,3 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
     </Modal>
   );
 }
-

@@ -13,15 +13,15 @@ export function SearchBar() {
           placeholder="Search properties..."
           value={filters.searchQuery}
           onChange={(e) => setFilters({ searchQuery: e.target.value })}
-          className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full pl-10 pr-12 md:pr-10 py-3 md:py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] md:min-h-0"
         />
         {filters.searchQuery && (
           <button
             onClick={() => setFilters({ searchQuery: '' })}
             aria-label="Clear search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
           >
-            <X size={16} />
+            <X size={18} className="md:w-4 md:h-4" />
           </button>
         )}
       </div>

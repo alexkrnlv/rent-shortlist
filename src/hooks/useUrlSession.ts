@@ -1,65 +1,54 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { usePropertyStore } from '../store/usePropertyStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import {
-  encodeSessionState,
-  decodeSessionState,
+  saveSession,
+  loadSession,
   buildSessionState,
+  getSessionIdFromUrl,
+  getCurrentSessionId,
+  setCurrentSessionId,
+  updateUrlWithSession,
   getUrlHash,
-  setUrlHash,
-  hasSessionInUrl,
-  checkUrlLength,
+  decodeLegacySession,
   type UrlSessionState,
 } from '../utils/urlSession';
 
 interface UseUrlSessionReturn {
-  isLoadedFromUrl: boolean;
-  syncToUrl: () => void;
-  urlStatus: 'ok' | 'warning' | 'error';
+  sessionId: string | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
 }
 
 /**
- * Hook to sync app state with URL hash
- * - Loads state from URL on mount if present
- * - Auto-syncs state changes to URL
+ * Hook to sync app state with server-side sessions
+ * - Loads session from URL on mount if present
+ * - Auto-saves changes to the server
+ * - Updates URL with friendly session ID
  */
 export function useUrlSession(): UseUrlSessionReturn {
-  const isInitializedRef = useRef(false);
-  const isLoadedFromUrlRef = useRef(false);
-  const urlStatusRef = useRef<'ok' | 'warning' | 'error'>('ok');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Get store states and actions
+  const isInitializedRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedHashRef = useRef<string>('');
+
+  // Get store states
   const properties = usePropertyStore((state) => state.properties);
   const tags = usePropertyStore((state) => state.tags);
   const filters = usePropertyStore((state) => state.filters);
   const centerPoint = useSettingsStore((state) => state.settings.centerPoint);
-  
-  // Store setters - we need direct access to set state
+
+  // Store setters
   const propertyStore = usePropertyStore;
   const settingsStore = useSettingsStore;
 
-  // Load state from URL
-  const loadFromUrl = useCallback(() => {
-    if (!hasSessionInUrl()) {
-      return false;
-    }
-
-    const hash = getUrlHash();
-    const sessionState = decodeSessionState(hash);
-    
-    if (!sessionState) {
-      console.warn('Failed to decode session from URL, starting fresh');
-      return false;
-    }
-
-    // Apply the loaded state to stores
-    applySessionToStores(sessionState);
-    return true;
-  }, []);
-
-  // Apply decoded session state to stores
-  const applySessionToStores = (session: UrlSessionState) => {
-    // Clear and set properties
+  // Apply session state to stores
+  const applySessionToStores = useCallback((session: UrlSessionState) => {
     propertyStore.setState({
       properties: session.p || [],
       tags: session.t || [],
@@ -67,76 +56,148 @@ export function useUrlSession(): UseUrlSessionReturn {
       selectedPropertyId: null,
     });
 
-    // Set center point
     if (session.c) {
       settingsStore.getState().setCenterPoint(session.c);
     }
-  };
+  }, [propertyStore, settingsStore]);
 
-  // Sync current state to URL
-  const syncToUrl = useCallback(() => {
+  // Save current state to server
+  const saveToServer = useCallback(async () => {
     const state = buildSessionState(properties, tags, centerPoint, filters);
-    const encoded = encodeSessionState(state);
+    const stateHash = JSON.stringify(state);
     
-    // Check URL length
-    const status = checkUrlLength(encoded);
-    urlStatusRef.current = status;
-    
-    if (status === 'error') {
-      console.warn('URL too long! Some data may not be saved properly.');
+    // Skip if nothing changed
+    if (stateHash === lastSavedHashRef.current) {
+      return;
     }
-    
-    setUrlHash(encoded);
-  }, [properties, tags, centerPoint, filters]);
 
-  // Initialize: load from URL on first mount
+    setIsSaving(true);
+    try {
+      const currentId = sessionId || getCurrentSessionId();
+      const result = await saveSession(state, currentId || undefined);
+      
+      if (result) {
+        setSessionId(result.id);
+        setCurrentSessionId(result.id);
+        updateUrlWithSession(result.id);
+        lastSavedHashRef.current = stateHash;
+        setError(null);
+      }
+    } catch (err) {
+      console.error('Failed to save session:', err);
+      setError('Failed to save session');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [properties, tags, centerPoint, filters, sessionId]);
+
+  // Initialize: load session from URL or localStorage
   useEffect(() => {
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
 
-    // Try to load from URL
-    const loadedFromUrl = loadFromUrl();
-    isLoadedFromUrlRef.current = loadedFromUrl;
+    const init = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Check for session ID in URL path (/s/:id)
+        const urlSessionId = getSessionIdFromUrl();
+        
+        if (urlSessionId) {
+          // Load from server
+          const session = await loadSession(urlSessionId);
+          if (session) {
+            applySessionToStores(session);
+            setSessionId(urlSessionId);
+            setCurrentSessionId(urlSessionId);
+            lastSavedHashRef.current = JSON.stringify(session);
+          } else {
+            setError('Session not found');
+          }
+        } else {
+          // Check for legacy hash-based session
+          const hash = getUrlHash();
+          if (hash) {
+            const legacySession = decodeLegacySession(hash);
+            if (legacySession) {
+              applySessionToStores(legacySession);
+              // Migrate to server-side session
+              const result = await saveSession(legacySession);
+              if (result) {
+                setSessionId(result.id);
+                setCurrentSessionId(result.id);
+                updateUrlWithSession(result.id);
+                lastSavedHashRef.current = JSON.stringify(legacySession);
+              }
+            }
+          } else {
+            // Check for existing session ID in localStorage
+            const existingId = getCurrentSessionId();
+            if (existingId) {
+              const session = await loadSession(existingId);
+              if (session) {
+                applySessionToStores(session);
+                setSessionId(existingId);
+                updateUrlWithSession(existingId);
+                lastSavedHashRef.current = JSON.stringify(session);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error initializing session:', err);
+        setError('Failed to load session');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    // If we didn't load from URL, sync current state to URL
-    if (!loadedFromUrl) {
-      // Small delay to ensure stores are hydrated from localStorage
-      const timer = setTimeout(() => {
-        syncToUrl();
-      }, 100);
-      return () => clearTimeout(timer);
+    init();
+  }, [applySessionToStores]);
+
+  // Auto-save on state changes (debounced)
+  useEffect(() => {
+    // Skip during initial load
+    if (!isInitializedRef.current || isLoading) return;
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
-  }, [loadFromUrl, syncToUrl]);
 
-  // Auto-sync state changes to URL (debounced)
+    // Debounce save
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToServer();
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [properties, tags, centerPoint, filters, saveToServer, isLoading]);
+
+  // Handle browser back/forward
   useEffect(() => {
-    // Skip first render to avoid double-sync on init
-    if (!isInitializedRef.current) return;
-
-    // Debounce URL updates
-    const timer = setTimeout(() => {
-      syncToUrl();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [properties, tags, centerPoint, filters, syncToUrl]);
-
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      if (hasSessionInUrl()) {
-        loadFromUrl();
+    const handlePopState = async () => {
+      const urlSessionId = getSessionIdFromUrl();
+      if (urlSessionId && urlSessionId !== sessionId) {
+        const session = await loadSession(urlSessionId);
+        if (session) {
+          applySessionToStores(session);
+          setSessionId(urlSessionId);
+        }
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [loadFromUrl]);
+  }, [sessionId, applySessionToStores]);
 
   return {
-    isLoadedFromUrl: isLoadedFromUrlRef.current,
-    syncToUrl,
-    urlStatus: urlStatusRef.current,
+    sessionId,
+    isLoading,
+    isSaving,
+    error,
   };
 }
-

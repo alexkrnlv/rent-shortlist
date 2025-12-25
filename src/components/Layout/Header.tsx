@@ -1,4 +1,4 @@
-import { Settings, Download, Plus, Upload, Map, Table2, Share2 } from 'lucide-react';
+import { Settings, Download, Plus, Upload, Map, Table2, Share2, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export type ViewMode = 'map' | 'table';
@@ -12,6 +12,8 @@ interface HeaderProps {
   propertyCount: number;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  onMobileSidebarToggle: () => void;
+  isMobileSidebarOpen: boolean;
 }
 
 export function Header({
@@ -23,10 +25,23 @@ export function Header({
   propertyCount,
   viewMode,
   onViewModeChange,
+  onMobileSidebarToggle,
+  isMobileSidebarOpen,
 }: HeaderProps) {
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-3">
+        {/* Mobile sidebar toggle button - only show in map mode on mobile */}
+        {viewMode === 'map' && (
+          <button
+            onClick={onMobileSidebarToggle}
+            className="md:hidden p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            title={isMobileSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            aria-label={isMobileSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          >
+            {isMobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        )}
         <div className="w-10 h-10 bg-primary-700 rounded-xl flex items-center justify-center">
           <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />

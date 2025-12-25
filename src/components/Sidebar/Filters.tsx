@@ -52,10 +52,10 @@ export function Filters() {
     <div className="border-b border-gray-200 bg-gray-50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-2 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+        className="w-full px-4 py-3 md:py-2 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors min-h-[44px] md:min-h-0"
       >
         <span>Filters & Sort</span>
-        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {isExpanded ? <ChevronUp size={18} className="md:w-4 md:h-4" /> : <ChevronDown size={18} className="md:w-4 md:h-4" />}
       </button>
 
       {isExpanded && (
@@ -67,7 +67,7 @@ export function Filters() {
               <select
                 value={filters.sortBy}
                 onChange={(e) => setFilters({ sortBy: e.target.value as SortField })}
-                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-3 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
               >
                 <option value="rating">Rating</option>
                 <option value="distance">Distance</option>
@@ -77,12 +77,12 @@ export function Filters() {
               </select>
               <button
                 onClick={toggleSortDirection}
-                className={`px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors flex items-center gap-1 ${
+                className={`px-4 py-3 md:px-3 md:py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors flex items-center gap-1 min-w-[60px] min-h-[44px] md:min-w-0 md:min-h-0 ${
                   filters.sortDirection === 'desc' ? 'bg-gray-100' : ''
                 }`}
                 title={filters.sortDirection === 'asc' ? 'Ascending' : 'Descending'}
               >
-                <ArrowUpDown size={14} />
+                <ArrowUpDown size={16} className="md:w-3.5 md:h-3.5" />
                 {filters.sortDirection === 'asc' ? 'Asc' : 'Desc'}
               </button>
             </div>
@@ -226,7 +226,7 @@ export function Filters() {
                 placeholder="0"
                 value={filters.minPrice || ''}
                 onChange={(e) => setFilters({ minPrice: parseInt(e.target.value) || null })}
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-3 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
               />
             </div>
             <div>
@@ -236,13 +236,13 @@ export function Filters() {
                 placeholder="Any"
                 value={filters.maxPrice || ''}
                 onChange={(e) => setFilters({ maxPrice: parseInt(e.target.value) || null })}
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-3 md:py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] md:min-h-0"
               />
             </div>
           </div>
 
-          <Button variant="ghost" size="sm" onClick={resetFilters} className="w-full">
-            <RotateCcw size={14} className="mr-1.5" />
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="w-full min-h-[44px] md:min-h-0">
+            <RotateCcw size={16} className="mr-1.5 md:w-3.5 md:h-3.5" />
             Reset Filters
           </Button>
         </div>

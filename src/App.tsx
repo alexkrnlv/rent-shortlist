@@ -18,7 +18,7 @@ function App() {
   useExtensionSync();
   
   // Sync state with URL
-  useUrlSession();
+  const { sessionId, isLoading: isSessionLoading } = useUrlSession();
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -27,18 +27,24 @@ function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { properties } = usePropertyStore();
+
+  // Close mobile sidebar when view mode changes
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [viewMode]);
 
   // Show welcome modal on first visit (not loaded from URL and not seen before)
   useEffect(() => {
-    // Small delay to let URL loading complete
-    const timer = setTimeout(() => {
-      if (!hasSessionInUrl() && !hasSeenWelcomeModal()) {
-        setShowWelcomeModal(true);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+    // Wait for session loading to complete
+    if (isSessionLoading) return;
+    
+    // Show welcome modal if first visit
+    if (!hasSessionInUrl() && !hasSeenWelcomeModal()) {
+      setShowWelcomeModal(true);
+    }
+  }, [isSessionLoading]);
 
   // Handle share button click
   const handleShare = async () => {
@@ -54,6 +60,9 @@ function App() {
     <>
       <Layout
         viewMode={viewMode}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        onMobileSidebarClose={() => setIsMobileSidebarOpen(false)}
         header={
           <Header
             onAddClick={() => setShowAddModal(true)}
@@ -64,6 +73,8 @@ function App() {
             propertyCount={properties.length}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            isMobileSidebarOpen={isMobileSidebarOpen}
           />
         }
         sidebar={<Sidebar />}
@@ -96,6 +107,7 @@ function App() {
       <WelcomeModal
         isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
+        sessionId={sessionId}
       />
 
       {/* Copied toast notification */}

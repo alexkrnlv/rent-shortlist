@@ -25,6 +25,122 @@ if (process.env.NODE_ENV === 'production') {
 // SSE clients for real-time updates
 const sseClients: Set<express.Response> = new Set();
 
+// ============================================
+// Session Storage for Short URLs
+// ============================================
+
+interface StoredSession {
+  id: string;
+  data: object;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// In-memory session storage (consider Redis/Key-Value for production persistence)
+const sessionStore = new Map<string, StoredSession>();
+
+// Word lists for friendly URL generation
+const adjectives = [
+  'sunny', 'cozy', 'bright', 'quiet', 'modern', 'charming', 'lovely', 'central',
+  'spacious', 'stylish', 'elegant', 'urban', 'trendy', 'peaceful', 'vibrant',
+  'fresh', 'warm', 'cool', 'green', 'blue', 'golden', 'silver', 'royal',
+  'happy', 'swift', 'calm', 'bold', 'crisp', 'prime', 'smart'
+];
+
+const nouns = [
+  'flat', 'home', 'nest', 'place', 'spot', 'pad', 'space', 'suite',
+  'lodge', 'haven', 'retreat', 'base', 'hub', 'zone', 'corner',
+  'view', 'court', 'lane', 'walk', 'garden', 'terrace', 'heights',
+  'point', 'house', 'manor', 'villa', 'loft', 'studio', 'den', 'nook'
+];
+
+function generateFriendlyId(): string {
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 99) + 1;
+  return `${adj}-${noun}-${num}`;
+}
+
+function generateUniqueId(): string {
+  let id = generateFriendlyId();
+  let attempts = 0;
+  while (sessionStore.has(id) && attempts < 100) {
+    id = generateFriendlyId();
+    attempts++;
+  }
+  // Fallback to random suffix if collision persists
+  if (sessionStore.has(id)) {
+    id = `${id}-${Date.now().toString(36)}`;
+  }
+  return id;
+}
+
+// POST /api/sessions - Create or update a session
+app.post('/api/sessions', (req, res) => {
+  try {
+    const { id, data } = req.body;
+    
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({ error: 'Invalid session data' });
+    }
+
+    const now = new Date().toISOString();
+    
+    // If ID provided and exists, update it
+    if (id && sessionStore.has(id)) {
+      const existing = sessionStore.get(id)!;
+      existing.data = data;
+      existing.updatedAt = now;
+      sessionStore.set(id, existing);
+      console.log(`Session updated: ${id}`);
+      return res.json({ id, url: `/s/${id}` });
+    }
+
+    // Create new session
+    const newId = id || generateUniqueId();
+    const session: StoredSession = {
+      id: newId,
+      data,
+      createdAt: now,
+      updatedAt: now,
+    };
+    sessionStore.set(newId, session);
+    console.log(`Session created: ${newId} (total: ${sessionStore.size})`);
+    
+    res.json({ id: newId, url: `/s/${newId}` });
+  } catch (error) {
+    console.error('Error saving session:', error);
+    res.status(500).json({ error: 'Failed to save session' });
+  }
+});
+
+// GET /api/sessions/:id - Retrieve a session
+app.get('/api/sessions/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = sessionStore.get(id);
+    
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    res.json({ id: session.id, data: session.data });
+  } catch (error) {
+    console.error('Error retrieving session:', error);
+    res.status(500).json({ error: 'Failed to retrieve session' });
+  }
+});
+
+// GET /api/sessions - List all sessions (for debugging)
+app.get('/api/sessions', (req, res) => {
+  const sessions = Array.from(sessionStore.values()).map(s => ({
+    id: s.id,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+  }));
+  res.json({ count: sessions.length, sessions });
+});
+
 // Broadcast to all SSE clients
 function broadcastToClients(data: object) {
   const message = `data: ${JSON.stringify(data)}\n\n`;

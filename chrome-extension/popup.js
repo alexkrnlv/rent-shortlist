@@ -113,25 +113,47 @@ function getApiUrl(appUrl) {
   return cleanUrl;
 }
 
+// Make a fetch request with proper error handling
+async function safeFetch(url, options = {}) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Server error (${response.status}): ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Check App URL setting.');
+    }
+    throw error;
+  }
+}
+
 // Fetch available tags from server
 async function fetchTags() {
   const appUrl = elements.appUrlInput.value.replace(/\/$/, '');
   const apiUrl = getApiUrl(appUrl);
 
   try {
-    const response = await fetch(`${apiUrl}/api/tags`);
-    if (response.ok) {
-      availableTags = await response.json();
-      renderTags();
-    }
+    availableTags = await safeFetch(`${apiUrl}/api/tags`);
+    renderTags();
   } catch (e) {
-    console.log('Could not fetch tags from server');
+    console.log('Could not fetch tags from server:', e.message);
   }
 }
 
 // Render tags in the UI
 function renderTags() {
-  if (availableTags.length === 0) {
+  if (!Array.isArray(availableTags) || availableTags.length === 0) {
     elements.tagSelection.classList.add('hidden');
     return;
   }
@@ -195,10 +217,13 @@ function showAlreadyAddedView(property) {
   elements.addedUrl.textContent = property.url;
 }
 
-// Update step status
-function updateStep(stepId, status) {
+// Update step status with optional message
+function updateStep(stepId, status, message = null) {
   const step = document.getElementById(stepId);
+  if (!step) return;
+  
   const iconEl = step.querySelector('.step-icon');
+  const textEl = step.querySelector('.step-text');
 
   step.classList.remove('active', 'completed', 'error');
 
@@ -218,6 +243,10 @@ function updateStep(stepId, status) {
     default:
       iconEl.innerHTML = icons.pending;
   }
+  
+  if (message && textEl) {
+    textEl.textContent = message;
+  }
 }
 
 // Show status message
@@ -230,6 +259,13 @@ function showStatus(message, type = 'info') {
 // Hide status
 function hideStatus() {
   elements.status.classList.add('hidden');
+}
+
+// Reset all steps to pending
+function resetAllSteps() {
+  ['step-connect', 'step-fetch', 'step-geocode', 'step-save'].forEach(stepId => {
+    updateStep(stepId, 'pending');
+  });
 }
 
 // Open app
@@ -248,6 +284,7 @@ async function handleAddProperty() {
   elements.progressSteps.classList.remove('hidden');
   elements.propertyPreview.classList.add('hidden');
   hideStatus();
+  resetAllSteps();
 
   let propertyData = {
     name: pageData?.title || currentTab.title || 'Property',
@@ -258,77 +295,85 @@ async function handleAddProperty() {
   };
 
   try {
-    // Step 1: Fetch property details
-    updateStep('step-fetch', 'active');
-
-    const fetchResponse = await fetch(`${apiUrl}/api/fetch-property`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentTab.url }),
-    });
-
-    if (fetchResponse.ok) {
-      const fetchedData = await fetchResponse.json();
-      propertyData = { ...propertyData, ...fetchedData };
-      updateStep('step-fetch', 'completed');
-    } else {
-      updateStep('step-fetch', 'error');
-      throw new Error('Could not fetch property details');
+    // Step 1: Test server connection
+    updateStep('step-connect', 'active');
+    
+    try {
+      await safeFetch(`${apiUrl}/api/health`);
+      updateStep('step-connect', 'completed');
+    } catch (error) {
+      updateStep('step-connect', 'error');
+      throw new Error(`Cannot connect to server at ${apiUrl}. Is the App URL correct?`);
     }
 
-    // Step 2: Parse with AI (already done in fetch-property)
-    updateStep('step-parse', 'active');
-    await new Promise(r => setTimeout(r, 300)); // Brief pause for UX
-    updateStep('step-parse', 'completed');
+    // Step 2: Fetch property details from the listing page
+    updateStep('step-fetch', 'active');
 
-    // Step 3: Geocode
+    try {
+      const fetchedData = await safeFetch(`${apiUrl}/api/fetch-property`, {
+        method: 'POST',
+        body: JSON.stringify({ url: currentTab.url }),
+      });
+      propertyData = { ...propertyData, ...fetchedData };
+      updateStep('step-fetch', 'completed');
+    } catch (error) {
+      updateStep('step-fetch', 'error');
+      throw new Error(`Failed to fetch property: ${error.message}`);
+    }
+
+    // Step 3: Geocode the address
     updateStep('step-geocode', 'active');
 
     if (!propertyData.address) {
       updateStep('step-geocode', 'error');
-      throw new Error('No address found - manual entry required');
+      throw new Error('No address found on the page - manual entry required');
     }
 
-    const geocodeResponse = await fetch(`${apiUrl}/api/geocode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: propertyData.address }),
-    });
-
-    if (!geocodeResponse.ok) {
+    let coordinates;
+    try {
+      coordinates = await safeFetch(`${apiUrl}/api/geocode`, {
+        method: 'POST',
+        body: JSON.stringify({ address: propertyData.address }),
+      });
+      
+      if (!coordinates || !coordinates.lat || !coordinates.lng) {
+        throw new Error('Invalid coordinates returned');
+      }
+      updateStep('step-geocode', 'completed');
+    } catch (error) {
       updateStep('step-geocode', 'error');
-      throw new Error('Could not find location');
+      throw new Error(`Could not find location for address: ${propertyData.address}`);
     }
-
-    const coordinates = await geocodeResponse.json();
-    updateStep('step-geocode', 'completed');
 
     // Step 4: Save to shortlist
     updateStep('step-save', 'active');
 
-    const saveResponse = await fetch(`${apiUrl}/api/add-property`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: currentTab.url,
-        title: propertyData.name,
-        address: propertyData.address,
-        thumbnail: propertyData.thumbnail,
-        price: propertyData.price,
-        coordinates,
-        isBTR: propertyData.isBTR || false,
-        tags: selectedTagIds,
-      }),
-    });
-
-    if (!saveResponse.ok) {
+    try {
+      const savedProperty = await safeFetch(`${apiUrl}/api/add-property`, {
+        method: 'POST',
+        body: JSON.stringify({
+          url: currentTab.url,
+          title: propertyData.name,
+          address: propertyData.address,
+          thumbnail: propertyData.thumbnail,
+          price: propertyData.price || '',
+          coordinates,
+          isBTR: propertyData.isBTR || false,
+          tags: selectedTagIds,
+        }),
+      });
+      
+      if (!savedProperty || !savedProperty.success) {
+        throw new Error('Server did not confirm save');
+      }
+      
+      updateStep('step-save', 'completed');
+    } catch (error) {
       updateStep('step-save', 'error');
-      throw new Error('Failed to save property');
+      throw new Error(`Failed to save property: ${error.message}`);
     }
 
-    updateStep('step-save', 'completed');
-
-    // Success!
+    // Success! Save to local storage
     await saveAddedProperty(propertyData);
 
     showStatus('Property added to your shortlist!', 'success');
@@ -344,7 +389,7 @@ async function handleAddProperty() {
 
 // Show failure state with manual entry option
 function showFailureState(errorMessage, propertyData) {
-  showStatus(errorMessage + '. Please enter details manually.', 'warning');
+  showStatus(errorMessage, 'error');
 
   // Show manual form
   elements.manualForm.classList.remove('hidden');
@@ -375,52 +420,58 @@ async function handleRetryWithManual() {
 
   elements.retryBtn.disabled = true;
   elements.retryBtn.innerHTML = '<div class="spinner"></div> Saving...';
+  hideStatus();
 
   try {
-    // Try to geocode the manual address
+    // Reset and try geocode
     updateStep('step-geocode', 'active');
 
-    const geocodeResponse = await fetch(`${apiUrl}/api/geocode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address }),
-    });
-
-    let coordinates = null;
-    if (geocodeResponse.ok) {
-      coordinates = await geocodeResponse.json();
+    let coordinates;
+    try {
+      coordinates = await safeFetch(`${apiUrl}/api/geocode`, {
+        method: 'POST',
+        body: JSON.stringify({ address }),
+      });
+      
+      if (!coordinates || !coordinates.lat || !coordinates.lng) {
+        throw new Error('Invalid coordinates');
+      }
       updateStep('step-geocode', 'completed');
-    } else {
+    } catch (error) {
       updateStep('step-geocode', 'error');
-      showStatus('Could not find location for this address', 'error');
+      showStatus(`Could not find location for: ${address}`, 'error');
       elements.retryBtn.disabled = false;
-      elements.retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/></svg> Retry with Manual Details';
+      elements.retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/></svg> Retry';
       return;
     }
 
     // Save to shortlist
     updateStep('step-save', 'active');
 
-    const saveResponse = await fetch(`${apiUrl}/api/add-property`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: currentTab.url,
-        title: name,
-        address,
-        thumbnail: pageData?.thumbnail || '',
-        price,
-        coordinates,
-        isBTR: false, // Manual entry defaults to non-BTR, can be changed in main app
-        tags: selectedTagIds,
-      }),
-    });
-
-    if (!saveResponse.ok) {
-      throw new Error('Failed to save property');
+    try {
+      const savedProperty = await safeFetch(`${apiUrl}/api/add-property`, {
+        method: 'POST',
+        body: JSON.stringify({
+          url: currentTab.url,
+          title: name,
+          address,
+          thumbnail: pageData?.thumbnail || '',
+          price,
+          coordinates,
+          isBTR: false,
+          tags: selectedTagIds,
+        }),
+      });
+      
+      if (!savedProperty || !savedProperty.success) {
+        throw new Error('Server did not confirm save');
+      }
+      
+      updateStep('step-save', 'completed');
+    } catch (error) {
+      updateStep('step-save', 'error');
+      throw new Error(`Failed to save: ${error.message}`);
     }
-
-    updateStep('step-save', 'completed');
 
     // Success!
     await saveAddedProperty({ name, address });
@@ -432,8 +483,8 @@ async function handleRetryWithManual() {
 
   } catch (error) {
     console.error('Error saving property:', error);
-    showStatus('Failed to save: ' + error.message, 'error');
+    showStatus(error.message, 'error');
     elements.retryBtn.disabled = false;
-    elements.retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/></svg> Retry with Manual Details';
+    elements.retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/></svg> Retry';
   }
 }

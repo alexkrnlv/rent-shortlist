@@ -22,6 +22,48 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
 }
 
+// SSE clients for real-time updates
+const sseClients: Set<express.Response> = new Set();
+
+// Broadcast to all SSE clients
+function broadcastToClients(data: object) {
+  const message = `data: ${JSON.stringify(data)}\n\n`;
+  sseClients.forEach(client => {
+    client.write(message);
+  });
+}
+
+// SSE endpoint for real-time updates
+app.get('/api/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
+
+  // Add client to set
+  sseClients.add(res);
+  console.log(`SSE client connected. Total clients: ${sseClients.size}`);
+
+  // Remove client on close
+  req.on('close', () => {
+    sseClients.delete(res);
+    console.log(`SSE client disconnected. Total clients: ${sseClients.size}`);
+  });
+
+  // Keep connection alive with periodic pings
+  const pingInterval = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(pingInterval);
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -562,6 +604,12 @@ app.post('/api/add-property', async (req, res) => {
     extensionProperties.push(property);
 
     console.log('Property added from extension:', property.url);
+
+    // Broadcast to all connected clients for real-time update
+    broadcastToClients({
+      type: 'property-added',
+      property,
+    });
 
     res.json({ success: true, property });
   } catch (error) {

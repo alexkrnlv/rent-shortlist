@@ -102,10 +102,21 @@ function normalizeUrl(url) {
   }
 }
 
+// Get API URL from app URL (handle localhost port mapping)
+function getApiUrl(appUrl) {
+  const cleanUrl = appUrl.replace(/\/$/, '');
+  // For localhost development, map frontend port to API port
+  if (cleanUrl.includes('localhost:5173') || cleanUrl.includes('localhost:5174')) {
+    return cleanUrl.replace(':5173', ':3001').replace(':5174', ':3001');
+  }
+  // For production (Render), API is on same origin
+  return cleanUrl;
+}
+
 // Fetch available tags from server
 async function fetchTags() {
   const appUrl = elements.appUrlInput.value.replace(/\/$/, '');
-  const apiUrl = appUrl.replace(':5173', ':3001').replace(':5174', ':3001');
+  const apiUrl = getApiUrl(appUrl);
 
   try {
     const response = await fetch(`${apiUrl}/api/tags`);
@@ -229,7 +240,7 @@ function openApp() {
 // Main add property handler
 async function handleAddProperty() {
   const appUrl = elements.appUrlInput.value.replace(/\/$/, '');
-  const apiUrl = appUrl.replace(':5173', ':3001').replace(':5174', ':3001');
+  const apiUrl = getApiUrl(appUrl);
 
   // Disable button and show progress
   elements.addBtn.disabled = true;
@@ -360,7 +371,7 @@ async function handleRetryWithManual() {
   }
 
   const appUrl = elements.appUrlInput.value.replace(/\/$/, '');
-  const apiUrl = appUrl.replace(':5173', ':3001').replace(':5174', ':3001');
+  const apiUrl = getApiUrl(appUrl);
 
   elements.retryBtn.disabled = true;
   elements.retryBtn.innerHTML = '<div class="spinner"></div> Saving...';

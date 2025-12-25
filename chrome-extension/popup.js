@@ -312,25 +312,34 @@ async function handleAddProperty() {
 
     try {
       // First, extract comprehensive content from the page via content script
+      console.log('Sending getPageContent message to tab:', currentTab.id);
       const pageContent = await chrome.tabs.sendMessage(currentTab.id, { action: 'getPageContent' });
       
-      if (!pageContent) {
-        throw new Error('Could not extract page content');
+      console.log('Page content received:', pageContent ? 'YES' : 'NO');
+      console.log('Page text length:', pageContent?.fullPageText?.length || 0);
+      
+      if (!pageContent || !pageContent.fullPageText) {
+        throw new Error('Could not extract page content - content script may not be loaded');
       }
 
       // Send the extracted content to our server for AI parsing
+      console.log('Sending to server for AI parsing...');
       const fetchedData = await safeFetch(`${apiUrl}/api/parse-property-content`, {
         method: 'POST',
         body: JSON.stringify({ pageContent }),
       });
       
+      console.log('Server response:', JSON.stringify(fetchedData));
       propertyData = { ...propertyData, ...fetchedData };
+      console.log('Final propertyData.address:', propertyData.address);
       updateStep('step-fetch', 'completed');
     } catch (error) {
       // If content extraction fails, fall back to basic page data
-      console.log('Content extraction failed, using basic data:', error.message);
+      console.error('Content extraction/parsing failed:', error.message);
+      console.log('Fallback pageData:', pageData);
       if (pageData?.address) {
         // We have basic data from the initial extraction, continue with that
+        propertyData.address = pageData.address;
         updateStep('step-fetch', 'completed');
       } else {
         updateStep('step-fetch', 'error');

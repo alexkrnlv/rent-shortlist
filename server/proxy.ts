@@ -4,9 +4,22 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from 'dotenv';
+import Redis from 'ioredis';
 
 // Load environment variables
 config();
+
+// Initialize Redis connection for session storage
+const redis = process.env.REDIS_URL 
+  ? new Redis(process.env.REDIS_URL)
+  : null;
+
+if (redis) {
+  redis.on('connect', () => console.log('✅ Connected to Redis'));
+  redis.on('error', (err) => console.error('Redis error:', err));
+} else {
+  console.log('⚠️ REDIS_URL not set, using in-memory session storage (sessions will be lost on restart)');
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +36,7 @@ app.use(express.json({ limit: '10mb' }));
 const sseClients: Set<express.Response> = new Set();
 
 // ============================================
-// Session Storage for Short URLs
+// Session Storage for Short URLs (Redis + Fallback)
 // ============================================
 
 interface StoredSession {
@@ -33,8 +46,65 @@ interface StoredSession {
   updatedAt: string;
 }
 
-// In-memory session storage (consider Redis/Key-Value for production persistence)
-const sessionStore = new Map<string, StoredSession>();
+// In-memory fallback when Redis is not available
+const memorySessionStore = new Map<string, StoredSession>();
+
+// Session storage abstraction - uses Redis if available, memory otherwise
+const sessionStorage = {
+  async get(id: string): Promise<StoredSession | null> {
+    if (redis) {
+      const data = await redis.get(`session:${id}`);
+      return data ? JSON.parse(data) : null;
+    }
+    return memorySessionStore.get(id) || null;
+  },
+  
+  async set(id: string, session: StoredSession): Promise<void> {
+    if (redis) {
+      // Store with 90-day expiration
+      await redis.set(`session:${id}`, JSON.stringify(session), 'EX', 90 * 24 * 60 * 60);
+    } else {
+      memorySessionStore.set(id, session);
+    }
+  },
+  
+  async has(id: string): Promise<boolean> {
+    if (redis) {
+      return (await redis.exists(`session:${id}`)) === 1;
+    }
+    return memorySessionStore.has(id);
+  },
+  
+  async count(): Promise<number> {
+    if (redis) {
+      const keys = await redis.keys('session:*');
+      return keys.length;
+    }
+    return memorySessionStore.size;
+  },
+  
+  async list(): Promise<{ id: string; createdAt: string; updatedAt: string }[]> {
+    if (redis) {
+      const keys = await redis.keys('session:*');
+      const sessions = await Promise.all(
+        keys.slice(0, 100).map(async (key) => {
+          const data = await redis.get(key);
+          if (data) {
+            const session = JSON.parse(data) as StoredSession;
+            return { id: session.id, createdAt: session.createdAt, updatedAt: session.updatedAt };
+          }
+          return null;
+        })
+      );
+      return sessions.filter((s): s is NonNullable<typeof s> => s !== null);
+    }
+    return Array.from(memorySessionStore.values()).map(s => ({
+      id: s.id,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
+  }
+};
 
 // Word lists for friendly URL generation
 const adjectives = [
@@ -58,22 +128,22 @@ function generateFriendlyId(): string {
   return `${adj}-${noun}-${num}`;
 }
 
-function generateUniqueId(): string {
+async function generateUniqueId(): Promise<string> {
   let id = generateFriendlyId();
   let attempts = 0;
-  while (sessionStore.has(id) && attempts < 100) {
+  while (await sessionStorage.has(id) && attempts < 100) {
     id = generateFriendlyId();
     attempts++;
   }
   // Fallback to random suffix if collision persists
-  if (sessionStore.has(id)) {
+  if (await sessionStorage.has(id)) {
     id = `${id}-${Date.now().toString(36)}`;
   }
   return id;
 }
 
 // POST /api/sessions - Create or update a session
-app.post('/api/sessions', (req, res) => {
+app.post('/api/sessions', async (req, res) => {
   try {
     const { id, data } = req.body;
     
@@ -84,25 +154,28 @@ app.post('/api/sessions', (req, res) => {
     const now = new Date().toISOString();
     
     // If ID provided and exists, update it
-    if (id && sessionStore.has(id)) {
-      const existing = sessionStore.get(id)!;
-      existing.data = data;
-      existing.updatedAt = now;
-      sessionStore.set(id, existing);
-      console.log(`Session updated: ${id}`);
-      return res.json({ id, url: `/s/${id}` });
+    if (id) {
+      const existing = await sessionStorage.get(id);
+      if (existing) {
+        existing.data = data;
+        existing.updatedAt = now;
+        await sessionStorage.set(id, existing);
+        console.log(`Session updated: ${id}`);
+        return res.json({ id, url: `/s/${id}` });
+      }
     }
 
     // Create new session
-    const newId = id || generateUniqueId();
+    const newId = id || await generateUniqueId();
     const session: StoredSession = {
       id: newId,
       data,
       createdAt: now,
       updatedAt: now,
     };
-    sessionStore.set(newId, session);
-    console.log(`Session created: ${newId} (total: ${sessionStore.size})`);
+    await sessionStorage.set(newId, session);
+    const count = await sessionStorage.count();
+    console.log(`Session created: ${newId} (total: ${count})`);
     
     res.json({ id: newId, url: `/s/${newId}` });
   } catch (error) {
@@ -112,10 +185,10 @@ app.post('/api/sessions', (req, res) => {
 });
 
 // GET /api/sessions/:id - Retrieve a session
-app.get('/api/sessions/:id', (req, res) => {
+app.get('/api/sessions/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const session = sessionStore.get(id);
+    const session = await sessionStorage.get(id);
     
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
@@ -128,14 +201,15 @@ app.get('/api/sessions/:id', (req, res) => {
   }
 });
 
-// GET /api/sessions - List all sessions (for debugging)
-app.get('/api/sessions', (req, res) => {
-  const sessions = Array.from(sessionStore.values()).map(s => ({
-    id: s.id,
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-  }));
-  res.json({ count: sessions.length, sessions });
+// GET /api/sessions - List sessions (for debugging)
+app.get('/api/sessions', async (req, res) => {
+  try {
+    const sessions = await sessionStorage.list();
+    res.json({ count: sessions.length, sessions, storage: redis ? 'redis' : 'memory' });
+  } catch (error) {
+    console.error('Error listing sessions:', error);
+    res.status(500).json({ error: 'Failed to list sessions' });
+  }
 });
 
 // Broadcast to all SSE clients

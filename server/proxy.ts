@@ -1296,7 +1296,7 @@ app.post('/api/tags', (req, res) => {
 // Add property from Chrome extension
 app.post('/api/add-property', async (req, res) => {
   try {
-    const { url, title, address, thumbnail, price, coordinates, isBTR, tags } = req.body;
+    const { url, title, address, thumbnail, price, coordinates, isBTR, tags, needsProcessing } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
@@ -1314,13 +1314,15 @@ app.post('/api/add-property', async (req, res) => {
       tags: tags || [],
       addedAt: new Date().toISOString(),
       processed: false,
+      needsProcessing: needsProcessing || false, // Flag for app to process this
     };
 
     extensionProperties.push(property);
 
-    console.log('Property added from extension:', property.url);
+    console.log('Property added from extension:', property.url, needsProcessing ? '(needs processing)' : '');
 
     // Broadcast to all connected clients for real-time update
+    // The main app will pick this up and process it
     broadcastToClients({
       type: 'property-added',
       property,

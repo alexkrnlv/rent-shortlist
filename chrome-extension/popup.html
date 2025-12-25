@@ -11,212 +11,129 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      width: 340px;
-      padding: 16px;
-      background: #f9fafb;
+      width: 320px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 200px;
     }
 
+    .container {
+      padding: 20px;
+    }
+
+    /* Header */
     .header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #e5e7eb;
+      gap: 12px;
+      margin-bottom: 20px;
     }
 
     .header-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-icon svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+    }
+
+    .header-text h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .header-text p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* Property Card */
+    .property-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .property-card .thumbnail {
+      width: 100%;
+      height: 120px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .header-icon svg {
-      width: 20px;
-      height: 20px;
-      color: white;
+    .property-card .thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
-    .header h1 {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1f2937;
+    .property-card .thumbnail svg {
+      width: 40px;
+      height: 40px;
+      color: #cbd5e1;
     }
 
-    .status {
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .status.success {
-      background: #d1fae5;
-      color: #065f46;
-    }
-
-    .status.error {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .status.info {
-      background: #e0e7ff;
-      color: #3730a3;
-    }
-
-    .status.warning {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .status.processing {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    .property-preview {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
-    }
-
-    .property-preview h3 {
+    .property-card h3 {
       font-size: 14px;
       font-weight: 600;
-      color: #1f2937;
-      margin-bottom: 8px;
-      line-height: 1.3;
+      color: #1e293b;
+      margin-bottom: 6px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    .property-preview p {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 4px;
-    }
-
-    .property-preview .url {
+    .property-card .url {
       font-size: 11px;
-      color: #9ca3af;
+      color: #94a3b8;
       word-break: break-all;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    .property-preview .added-badge {
+    .property-card .site-badge {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: #d1fae5;
-      color: #065f46;
-      font-size: 11px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 10px;
       font-weight: 500;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       margin-top: 8px;
     }
 
-    .checkbox-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    .checkbox-group:hover {
-      background: #f9fafb;
-    }
-
-    .checkbox-group input {
-      width: 16px;
-      height: 16px;
-      accent-color: #7c3aed;
-    }
-
-    .checkbox-group label {
-      font-size: 13px;
-      color: #374151;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .checkbox-group .btr-badge {
-      background: #7c3aed;
-      color: white;
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
-    /* Manual entry form */
-    .manual-form {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
-    }
-
-    .manual-form h4 {
-      font-size: 13px;
-      font-weight: 600;
-      color: #1f2937;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 4px;
-    }
-
-    .form-group input {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-    }
-
+    /* Buttons */
     .btn {
       width: 100%;
-      padding: 12px 16px;
+      padding: 14px 20px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -224,151 +141,183 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      color: white;
+      background: white;
+      color: #7c3aed;
     }
 
     .btn-primary:hover {
-      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
     }
 
     .btn-primary:disabled {
-      background: #9ca3af;
+      background: rgba(255,255,255,0.5);
+      color: rgba(124, 58, 237, 0.5);
       cursor: not-allowed;
+      transform: none;
     }
 
     .btn-secondary {
-      background: white;
-      color: #374151;
-      border: 1px solid #d1d5db;
-      margin-top: 8px;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      margin-top: 10px;
+      font-size: 13px;
+      padding: 10px 16px;
     }
 
     .btn-secondary:hover {
-      background: #f9fafb;
+      background: rgba(255,255,255,0.25);
     }
 
-    .btn-success {
-      background: #10b981;
+    /* Status States */
+    .status-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .status-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .status-icon.success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .status-icon.error {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .status-icon.processing {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .status-icon.already {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    .status-icon svg {
+      width: 32px;
+      height: 32px;
       color: white;
     }
 
-    .btn-warning {
-      background: #f59e0b;
-      color: white;
-      margin-top: 8px;
+    .status-card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
     }
 
+    .status-card p {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .status-card .property-name {
+      font-weight: 600;
+      color: #7c3aed;
+    }
+
+    /* Spinner */
     .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: white;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(124, 58, 237, 0.2);
+      border-top-color: #7c3aed;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
+    }
+
+    .spinner-white {
+      border-color: rgba(255,255,255,0.3);
+      border-top-color: white;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    .progress-steps {
-      margin-bottom: 16px;
+    /* Pulse animation for processing */
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
     }
 
-    .progress-step {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 0;
-      font-size: 12px;
-      color: #6b7280;
+    .status-icon.processing {
+      animation: pulse 2s ease-in-out infinite;
     }
 
-    .progress-step.active {
-      color: #1e40af;
-      font-weight: 500;
-    }
-
-    .progress-step.completed {
-      color: #065f46;
-    }
-
-    .progress-step.error {
-      color: #991b1b;
-    }
-
-    .progress-step .step-icon {
-      width: 20px;
-      height: 20px;
+    /* Settings link */
+    .settings-link {
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-
-    .progress-step .step-spinner {
-      width: 14px;
-      height: 14px;
-      border: 2px solid #dbeafe;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    .settings {
+      gap: 6px;
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+      text-decoration: none;
       margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid #e5e7eb;
+      cursor: pointer;
     }
 
-    .settings-title {
-      font-size: 12px;
-      font-weight: 500;
-      color: #6b7280;
-      margin-bottom: 8px;
+    .settings-link:hover {
+      color: rgba(255,255,255,0.9);
     }
 
-    .settings input {
+    /* Settings panel */
+    .settings-panel {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .settings-panel label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .settings-panel input {
       width: 100%;
       padding: 8px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
+      border: none;
+      border-radius: 8px;
       font-size: 12px;
+      background: rgba(255,255,255,0.9);
     }
 
-    .settings input:focus {
+    .settings-panel input:focus {
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+      background: white;
     }
 
     .hidden {
       display: none !important;
     }
 
-    /* Tag selection styles */
-    .tag-selection {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .tag-selection-header {
-      font-size: 12px;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tag-list {
+    /* Tag chips in success state */
+    .tags-container {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      justify-content: center;
+      margin-top: 12px;
     }
 
     .tag-chip {
@@ -376,7 +325,7 @@
       align-items: center;
       gap: 4px;
       padding: 4px 10px;
-      border-radius: 16px;
+      border-radius: 12px;
       font-size: 11px;
       font-weight: 500;
       cursor: pointer;
@@ -385,136 +334,133 @@
     }
 
     .tag-chip:hover {
-      opacity: 0.9;
+      opacity: 0.8;
     }
 
     .tag-chip.selected {
-      border-color: #1f2937;
+      border-color: #1e293b;
     }
 
     .tag-chip .tag-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-    }
-
-    .no-tags-message {
-      font-size: 11px;
-      color: #9ca3af;
-      margin: 0;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="header-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-      </svg>
-    </div>
-    <h1>Rent Shortlist</h1>
-  </div>
-
-  <div id="status" class="status hidden"></div>
-
-  <!-- Already Added View -->
-  <div id="already-added-view" class="hidden">
-    <div class="property-preview">
-      <h3 id="added-title"></h3>
-      <p id="added-address"></p>
-      <p class="url" id="added-url"></p>
-      <div class="added-badge">
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        Already in shortlist
+  <div class="container">
+    <div class="header">
+      <div class="header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
       </div>
-    </div>
-    <button id="open-app-btn-added" class="btn btn-primary">
-      Open Rent Shortlist App
-    </button>
-  </div>
-
-  <!-- Add Property View -->
-  <div id="add-view">
-    <div id="property-preview" class="property-preview">
-      <h3 id="preview-title">Loading...</h3>
-      <p id="preview-address"></p>
-      <p class="url" id="preview-url"></p>
-    </div>
-
-    <!-- Progress Steps (shown during processing) -->
-    <div id="progress-steps" class="progress-steps hidden">
-      <div id="step-connect" class="progress-step">
-        <span class="step-icon">○</span>
-        <span class="step-text">Connecting to server...</span>
-      </div>
-      <div id="step-fetch" class="progress-step">
-        <span class="step-icon">○</span>
-        <span class="step-text">Analyzing property details...</span>
-      </div>
-      <div id="step-geocode" class="progress-step">
-        <span class="step-icon">○</span>
-        <span class="step-text">Finding location...</span>
-      </div>
-      <div id="step-save" class="progress-step">
-        <span class="step-icon">○</span>
-        <span class="step-text">Saving to shortlist...</span>
+      <div class="header-text">
+        <h1>Rent Shortlist</h1>
+        <p>Save properties to your list</p>
       </div>
     </div>
 
-    <!-- Manual Entry Form (shown on failure) -->
-    <div id="manual-form" class="manual-form hidden">
-      <h4>
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        Enter details manually
-      </h4>
-      <div class="form-group">
-        <label>Property Name *</label>
-        <input type="text" id="manual-name" placeholder="e.g., 2 Bed Flat in Shoreditch">
+    <!-- Add View -->
+    <div id="add-view">
+      <div class="property-card">
+        <div class="thumbnail" id="thumbnail-container">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </div>
+        <h3 id="property-title">Loading...</h3>
+        <p class="url" id="property-url"></p>
+        <span class="site-badge" id="site-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="site-name">website</span>
+        </span>
       </div>
-      <div class="form-group">
-        <label>Address *</label>
-        <input type="text" id="manual-address" placeholder="e.g., 123 High Street, London E1 6AB">
-      </div>
-      <div class="form-group">
-        <label>Price (optional)</label>
-        <input type="text" id="manual-price" placeholder="e.g., £2,500 pcm">
-      </div>
+
+      <!-- Tags (optional) -->
+      <div id="tags-container" class="tags-container hidden"></div>
+
+      <button id="add-btn" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add to Shortlist
+      </button>
+
+      <button id="open-app-btn" class="btn btn-secondary">
+        Open App →
+      </button>
     </div>
 
-    <!-- Tag Selection -->
-    <div id="tag-selection" class="tag-selection hidden">
-      <div class="tag-selection-header">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        Tags (optional)
+    <!-- Success View -->
+    <div id="success-view" class="hidden">
+      <div class="status-card">
+        <div class="status-icon success">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h2>Added!</h2>
+        <p>Opening in your shortlist app for processing...</p>
       </div>
-      <div id="tag-list" class="tag-list">
-        <p class="no-tags-message">No tags available. Create tags in the main app first.</p>
-      </div>
+      <button id="open-app-btn-success" class="btn btn-secondary">
+        View in App →
+      </button>
     </div>
 
-    <button id="add-btn" class="btn btn-primary">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-      Add to Shortlist
-    </button>
+    <!-- Already Added View -->
+    <div id="already-view" class="hidden">
+      <div class="status-card">
+        <div class="status-icon already">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <h2>Already Saved</h2>
+        <p>This property is already in your shortlist.</p>
+      </div>
+      <button id="open-app-btn-already" class="btn btn-secondary">
+        View in App →
+      </button>
+    </div>
 
-    <button id="retry-btn" class="btn btn-warning hidden">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/></svg>
-      Retry with Manual Details
-    </button>
+    <!-- Error View -->
+    <div id="error-view" class="hidden">
+      <div class="status-card">
+        <div class="status-icon error">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <h2>Oops!</h2>
+        <p id="error-message">Something went wrong. Please try again.</p>
+      </div>
+      <button id="retry-btn" class="btn btn-primary" style="background: #7c3aed; color: white;">
+        Try Again
+      </button>
+      <button id="open-app-btn-error" class="btn btn-secondary">
+        Open App →
+      </button>
+    </div>
 
-    <button id="open-app-btn" class="btn btn-secondary">
-      Open Rent Shortlist App
-    </button>
-  </div>
+    <!-- Settings -->
+    <div class="settings-link" id="settings-toggle">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Settings
+    </div>
 
-  <div class="settings">
-    <div class="settings-title">App URL</div>
-    <input type="text" id="app-url" placeholder="https://rent-shortlist.onrender.com" value="https://rent-shortlist.onrender.com">
-    <p style="font-size: 10px; color: #9ca3af; margin-top: 4px;">Use localhost:5173 for local development</p>
+    <div id="settings-panel" class="settings-panel hidden">
+      <label>App URL</label>
+      <input type="text" id="app-url" placeholder="https://rent-shortlist.onrender.com">
+    </div>
   </div>
 
   <script src="popup.js"></script>

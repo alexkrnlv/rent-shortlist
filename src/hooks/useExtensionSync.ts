@@ -16,6 +16,7 @@ interface PendingProperty {
   isBTR: boolean;
   tags: string[];
   addedAt: string;
+  needsProcessing?: boolean;
 }
 
 export function useExtensionSync() {
@@ -52,6 +53,81 @@ export function useExtensionSync() {
     });
   }, [properties]);
 
+  // Fetch and parse property details from URL
+  const fetchPropertyDetails = useCallback(async (url: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/fetch-property`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch property');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching property details:', error);
+      return null;
+    }
+  }, [apiUrl]);
+
+  // Geocode an address
+  const geocodeAddress = useCallback(async (address: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Geocoding failed');
+      }
+      
+      const data = await response.json();
+      if (data.lat && data.lng) {
+        return { lat: data.lat, lng: data.lng };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error geocoding:', error);
+      return null;
+    }
+  }, [apiUrl]);
+
+  // Calculate distances from property to center point
+  const calculateDistances = useCallback(async (
+    coordinates: { lat: number; lng: number }
+  ): Promise<Property['distances']> => {
+    if (!settings.centerPoint) return null;
+
+    try {
+      const response = await fetch(`${apiUrl}/api/distances`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: coordinates,
+          destination: settings.centerPoint,
+        }),
+      });
+      
+      if (!response.ok) return null;
+      
+      const distData = await response.json();
+      return {
+        direct: calculateDirectDistance(coordinates, settings.centerPoint),
+        publicTransport: distData.transit ? { distance: distData.transit.distance, duration: distData.transit.duration } : null,
+        walking: distData.walking ? { distance: distData.walking.distance, duration: distData.walking.duration } : null,
+        driving: distData.driving ? { distance: distData.driving.distance, duration: distData.driving.duration } : null,
+      };
+    } catch (e) {
+      console.log('Could not calculate distances:', e);
+      return null;
+    }
+  }, [settings.centerPoint, apiUrl]);
+
   // Process a single pending property
   const processProperty = useCallback(async (item: PendingProperty) => {
     // Skip if already processing
@@ -69,58 +145,77 @@ export function useExtensionSync() {
     }
 
     processingIds.current.add(item.id);
+    console.log('Processing property from extension:', item.url);
 
     try {
-      // If we already have coordinates from the extension, use them directly
+      let propertyData = {
+        name: item.title || 'Property',
+        address: item.address || '',
+        thumbnail: item.thumbnail || '',
+        price: item.price || '',
+        isBTR: item.isBTR || false,
+      };
       let coordinates = item.coordinates;
-      let distances: Property['distances'] = null;
 
-      // Calculate distances if we have coordinates and a center point
-      if (coordinates && settings.centerPoint) {
-        try {
-          const distResponse = await fetch(`${apiUrl}/api/distances`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              origin: coordinates,
-              destination: settings.centerPoint,
-            }),
-          });
-          
-          if (distResponse.ok) {
-            const distData = await distResponse.json();
-            distances = {
-              direct: calculateDirectDistance(coordinates, settings.centerPoint),
-              publicTransport: distData.transit ? { distance: distData.transit.distance, duration: distData.transit.duration } : null,
-              walking: distData.walking ? { distance: distData.walking.distance, duration: distData.walking.duration } : null,
-              driving: distData.driving ? { distance: distData.driving.distance, duration: distData.driving.duration } : null,
-            };
-          }
-        } catch (e) {
-          console.log('Could not calculate distances:', e);
+      // If property needs processing (from simplified extension), fetch details
+      if (item.needsProcessing || !item.address) {
+        console.log('Fetching property details from URL...');
+        const fetchedData = await fetchPropertyDetails(item.url);
+        
+        if (fetchedData) {
+          propertyData = {
+            name: fetchedData.name || propertyData.name,
+            address: fetchedData.address || propertyData.address,
+            thumbnail: fetchedData.thumbnail || propertyData.thumbnail,
+            price: fetchedData.price || propertyData.price,
+            isBTR: fetchedData.isBTR || propertyData.isBTR,
+          };
+          console.log('Fetched property details:', propertyData.name, propertyData.address);
         }
       }
 
-      if (coordinates) {
-        const property: Property = {
-          id: generateId(),
-          url: item.url,
-          name: item.title || 'Property',
-          address: item.address || '',
-          thumbnail: item.thumbnail,
-          coordinates,
-          distances,
-          comment: '',
-          rating: null,
-          price: item.price,
-          isBTR: item.isBTR,
-          tags: item.tags || [],
-          createdAt: item.addedAt,
-        };
-
-        addProperty(property);
-        console.log('Property added from extension:', property.name);
+      // Geocode if we don't have coordinates but have an address
+      if (!coordinates && propertyData.address) {
+        console.log('Geocoding address:', propertyData.address);
+        coordinates = await geocodeAddress(propertyData.address);
       }
+
+      // If we still don't have coordinates, try geocoding the title/name
+      if (!coordinates && propertyData.name) {
+        // Extract potential location from name
+        const locationMatch = propertyData.name.match(/,?\s*([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
+        if (locationMatch) {
+          console.log('Trying to geocode from name:', locationMatch[0]);
+          coordinates = await geocodeAddress(locationMatch[0] + ', London');
+        }
+      }
+
+      // Calculate distances if we have coordinates
+      let distances: Property['distances'] = null;
+      if (coordinates) {
+        distances = await calculateDistances(coordinates);
+      }
+
+      // Create and add property even if we don't have coordinates
+      // User can fix it later in the app
+      const property: Property = {
+        id: generateId(),
+        url: item.url,
+        name: propertyData.name,
+        address: propertyData.address,
+        thumbnail: propertyData.thumbnail,
+        coordinates: coordinates || { lat: 51.5074, lng: -0.1278 }, // Default to London center if no coords
+        distances,
+        comment: coordinates ? '' : '⚠️ Location needs verification',
+        rating: null,
+        price: propertyData.price,
+        isBTR: propertyData.isBTR,
+        tags: item.tags || [],
+        createdAt: item.addedAt,
+      };
+
+      addProperty(property);
+      console.log('✅ Property added:', property.name, coordinates ? '' : '(needs location)');
 
       // Mark as processed on server
       await fetch(`${apiUrl}/api/mark-processed`, {
@@ -139,7 +234,7 @@ export function useExtensionSync() {
     } finally {
       processingIds.current.delete(item.id);
     }
-  }, [addProperty, settings.centerPoint, isUrlAlreadyAdded, apiUrl]);
+  }, [addProperty, isUrlAlreadyAdded, fetchPropertyDetails, geocodeAddress, calculateDistances, apiUrl]);
 
   // Fetch and process all pending properties
   const processPendingProperties = useCallback(async () => {
@@ -181,6 +276,7 @@ export function useExtensionSync() {
           const data = JSON.parse(event.data);
           if (data.type === 'property-added') {
             // Process the new property immediately
+            console.log('🔔 SSE: New property received from extension');
             processProperty(data.property);
           }
         } catch (e) {

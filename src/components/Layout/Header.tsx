@@ -1,30 +1,28 @@
-import { Settings, Download, Plus, Upload, Map, Table2, Share2, Menu, X } from 'lucide-react';
+import { Settings, Download, Upload, Share2, Menu, X, FolderPlus } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export type ViewMode = 'map' | 'table';
 
 interface HeaderProps {
-  onAddClick: () => void;
   onSettingsClick: () => void;
   onExportClick: () => void;
   onImportClick: () => void;
   onShareClick: () => void;
+  onNewSessionClick: () => void;
   propertyCount: number;
   viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onMobileSidebarToggle: () => void;
   isMobileSidebarOpen: boolean;
 }
 
 export function Header({
-  onAddClick,
   onSettingsClick,
   onExportClick,
   onImportClick,
   onShareClick,
+  onNewSessionClick,
   propertyCount,
   viewMode,
-  onViewModeChange,
   onMobileSidebarToggle,
   isMobileSidebarOpen,
 }: HeaderProps) {
@@ -55,51 +53,6 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-3">
-        {/* View Mode Toggle */}
-        <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => onViewModeChange('map')}
-            className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
-              ${viewMode === 'map'
-                ? 'bg-white text-primary-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-              }
-            `}
-            title="Map View"
-          >
-            <Map size={16} />
-            <span className="hidden md:inline">Map</span>
-          </button>
-          <button
-            onClick={() => onViewModeChange('table')}
-            className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
-              ${viewMode === 'table'
-                ? 'bg-white text-primary-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-              }
-            `}
-            title="Table View"
-          >
-            <Table2 size={16} />
-            <span className="hidden md:inline">Table</span>
-          </button>
-        </div>
-
-        <div className="hidden sm:block w-px h-6 bg-gray-200" />
-
-        {/* Mobile View Toggle */}
-        <div className="sm:hidden">
-          <button
-            onClick={() => onViewModeChange(viewMode === 'map' ? 'table' : 'map')}
-            className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-            title={viewMode === 'map' ? 'Switch to Table View' : 'Switch to Map View'}
-          >
-            {viewMode === 'map' ? <Table2 size={20} /> : <Map size={20} />}
-          </button>
-        </div>
-
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onImportClick} className="hidden lg:inline-flex">
             <Upload size={18} className="mr-1.5" />
@@ -108,6 +61,10 @@ export function Header({
           <Button variant="ghost" size="sm" onClick={onExportClick} className="hidden lg:inline-flex">
             <Download size={18} className="mr-1.5" />
             Export
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onNewSessionClick} className="hidden lg:inline-flex">
+            <FolderPlus size={18} className="mr-1.5" />
+            New Session
           </Button>
           <Button variant="ghost" size="sm" onClick={onShareClick} className="hidden lg:inline-flex">
             <Share2 size={18} className="mr-1.5" />
@@ -120,16 +77,15 @@ export function Header({
           <Button variant="ghost" size="sm" onClick={onExportClick} className="lg:hidden p-2">
             <Download size={18} />
           </Button>
+          <Button variant="ghost" size="sm" onClick={onNewSessionClick} className="lg:hidden p-2" title="New Session">
+            <FolderPlus size={18} />
+          </Button>
           <Button variant="ghost" size="sm" onClick={onShareClick} className="lg:hidden p-2" title="Share">
             <Share2 size={18} />
           </Button>
           <Button variant="ghost" size="sm" onClick={onSettingsClick}>
             <Settings size={18} className="lg:mr-1.5" />
             <span className="hidden lg:inline">Settings</span>
-          </Button>
-          <Button variant="primary" size="sm" onClick={onAddClick}>
-            <Plus size={18} className="lg:mr-1.5" />
-            <span className="hidden lg:inline">Add Properties</span>
           </Button>
         </div>
       </div>

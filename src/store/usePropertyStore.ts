@@ -38,6 +38,7 @@ interface PropertyState {
   setSelectedProperty: (id: string | null) => void;
   getFilteredProperties: () => Property[];
   getPropertyById: (id: string) => Property | undefined;
+  recalculateDistances: (centerPoint: { lat: number; lng: number }) => Promise<void>;
   // URL duplicate detection
   hasPropertyWithUrl: (url: string) => boolean;
   getPropertyByUrl: (url: string) => Property | undefined;
@@ -144,6 +145,48 @@ export const usePropertyStore = create<PropertyState>()(
               const distA = a.distances?.direct ?? Infinity;
               const distB = b.distances?.direct ?? Infinity;
               return (distA - distB) * dir;
+            case 'publicTransport': {
+              const parseMinutes = (duration: string | undefined | null): number => {
+                if (!duration) return Infinity;
+                const match = duration.match(/(\d+)\s*(?:min|mins|hour|hours|hr|hrs)/i);
+                if (!match) return Infinity;
+                const value = parseInt(match[1], 10);
+                return duration.toLowerCase().includes('hour') || duration.toLowerCase().includes('hr') 
+                  ? value * 60 
+                  : value;
+              };
+              const ptA = parseMinutes(a.distances?.publicTransport?.duration);
+              const ptB = parseMinutes(b.distances?.publicTransport?.duration);
+              return (ptA - ptB) * dir;
+            }
+            case 'walking': {
+              const parseMinutes = (duration: string | undefined | null): number => {
+                if (!duration) return Infinity;
+                const match = duration.match(/(\d+)\s*(?:min|mins|hour|hours|hr|hrs)/i);
+                if (!match) return Infinity;
+                const value = parseInt(match[1], 10);
+                return duration.toLowerCase().includes('hour') || duration.toLowerCase().includes('hr') 
+                  ? value * 60 
+                  : value;
+              };
+              const walkA = parseMinutes(a.distances?.walking?.duration);
+              const walkB = parseMinutes(b.distances?.walking?.duration);
+              return (walkA - walkB) * dir;
+            }
+            case 'driving': {
+              const parseMinutes = (duration: string | undefined | null): number => {
+                if (!duration) return Infinity;
+                const match = duration.match(/(\d+)\s*(?:min|mins|hour|hours|hr|hrs)/i);
+                if (!match) return Infinity;
+                const value = parseInt(match[1], 10);
+                return duration.toLowerCase().includes('hour') || duration.toLowerCase().includes('hr') 
+                  ? value * 60 
+                  : value;
+              };
+              const driveA = parseMinutes(a.distances?.driving?.duration);
+              const driveB = parseMinutes(b.distances?.driving?.duration);
+              return (driveA - driveB) * dir;
+            }
             case 'price':
               const priceA = parseInt(a.price?.replace(/[^0-9]/g, '') || '0', 10);
               const priceB = parseInt(b.price?.replace(/[^0-9]/g, '') || '0', 10);
@@ -159,6 +202,59 @@ export const usePropertyStore = create<PropertyState>()(
         return sorted;
       },
       getPropertyById: (id: string) => get().properties.find((p) => p.id === id),
+      recalculateDistances: async (centerPoint: { lat: number; lng: number }) => {
+        const { properties } = get();
+        const propertiesWithCoords = properties.filter(p => p.coordinates);
+        
+        for (const property of propertiesWithCoords) {
+          try {
+            // Calculate direct distance
+            const R = 6371; // Earth's radius in km
+            const dLat = ((centerPoint.lat - property.coordinates!.lat) * Math.PI) / 180;
+            const dLng = ((centerPoint.lng - property.coordinates!.lng) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos((property.coordinates!.lat * Math.PI) / 180) *
+              Math.cos((centerPoint.lat * Math.PI) / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const directDistance = R * c;
+
+            // Fetch travel times from API
+            const response = await fetch('/api/distances', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                origin: property.coordinates,
+                destination: centerPoint,
+              }),
+            });
+
+            if (response.ok) {
+              const distData = await response.json();
+              
+              // Update property with new distances
+              set((state) => ({
+                properties: state.properties.map((p) =>
+                  p.id === property.id
+                    ? {
+                        ...p,
+                        distances: {
+                          direct: directDistance,
+                          publicTransport: distData.transit || null,
+                          walking: distData.walking || null,
+                          driving: distData.driving || null,
+                        },
+                      }
+                    : p
+                ),
+              }));
+            }
+          } catch (error) {
+            console.error(`Failed to recalculate distances for property ${property.id}:`, error);
+          }
+        }
+      },
       // URL duplicate detection
       hasPropertyWithUrl: (url: string) => {
         const normalized = normalizeUrl(url);

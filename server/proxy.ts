@@ -213,6 +213,27 @@ app.get('/api/sessions', async (req, res) => {
   }
 });
 
+// GET /api/user-sessions - Get recent sessions for the extension (simplified version)
+app.get('/api/user-sessions', async (req, res) => {
+  try {
+    const allSessions = await sessionStorage.list();
+    // Return most recent 10 sessions, sorted by updated date
+    const recentSessions = allSessions
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 10)
+      .map(s => ({
+        id: s.id,
+        url: `/s/${s.id}`,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      }));
+    res.json(recentSessions);
+  } catch (error) {
+    console.error('Error listing user sessions:', error);
+    res.status(500).json({ error: 'Failed to list sessions' });
+  }
+});
+
 // Broadcast to all SSE clients
 function broadcastToClients(data: object) {
   const message = `data: ${JSON.stringify(data)}\n\n`;
@@ -1133,7 +1154,31 @@ Examples:
   → Address: "Elephant Central, SE1"
 
 ## BTR Indicators
-Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, Simple Life London, AWOL, Way of Life, "Build to Rent", "BTR", professionally managed developments with concierge/gym/amenities.
+
+Set isBTR to true if you detect ANY of these:
+
+**BTR Operators/Brands:**
+Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, Simple Life London, AWOL, Way of Life, Verto, Connected Living
+
+**BTR Keywords:**
+"Build to Rent", "Build-to-Rent", "BTR", "purpose-built rental", "professionally managed apartments", "managed building", "resident-focused", "rental community"
+
+**BTR Amenities (strong indicators when 3+ are present):**
+- On-site management/concierge/reception
+- Resident app/portal
+- Co-working space/business lounge
+- Cinema room/screening room
+- Gym/fitness studio
+- Residents' lounge/social space
+- Roof terrace/gardens (shared)
+- Games room/entertainment area
+- Pet spa/pet-friendly facilities
+- Bike storage with maintenance
+- Parcel room/package service
+- Events program/resident events
+
+**What's NOT BTR:**
+Traditional estate agent listings (Rightmove, Zoopla, OnTheMarket) for individual landlord properties, even if they have some amenities.
 
 ---
 
@@ -1460,8 +1505,16 @@ Return a JSON object with these fields:
 ## Important Rules:
 1. The ADDRESS must be the PROPERTY location, not the estate agent's office
 2. Look for postcode patterns (e.g., E14 5AB, SW1A 1AA)
-3. isBTR = true if this is a Build-to-Rent development (Quintain, Get Living, Greystar, Fizzy, Grainger, Essential Living, etc.)
-4. Extract the actual monthly rent price
+3. Extract the actual monthly rent price
+
+## BTR (Build to Rent) Detection:
+Set isBTR to true if you detect ANY of these:
+
+**BTR Operators:** Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, Simple Life London, AWOL, Way of Life, Verto, Connected Living
+
+**BTR Keywords:** "Build to Rent", "Build-to-Rent", "BTR", "purpose-built rental", "professionally managed apartments", "managed building"
+
+**BTR Amenities (3+ indicates BTR):** On-site management/concierge, resident app, co-working space, cinema room, gym, residents' lounge, roof terrace (shared), games room, pet spa, bike storage, parcel room, events program
 
 ## Page URL:
 ${property.url}

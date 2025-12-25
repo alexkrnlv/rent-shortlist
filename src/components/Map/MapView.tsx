@@ -206,6 +206,9 @@ export function MapView() {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
+  const [showTransit, setShowTransit] = useState(false);
+  const [transitLayer, setTransitLayer] = useState<google.maps.TransitLayer | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: settings.googleMapsApiKey,
@@ -221,12 +224,18 @@ export function MapView() {
     google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
       setMapReady(true);
     });
+    // Initialize transit layer
+    const layer = new google.maps.TransitLayer();
+    setTransitLayer(layer);
   }, []);
 
   const onUnmount = useCallback(() => {
+    if (transitLayer) {
+      transitLayer.setMap(null);
+    }
     setMap(null);
     setMapReady(false);
-  }, []);
+  }, [transitLayer]);
 
   // Fit bounds when map is ready and properties exist
   useEffect(() => {
@@ -252,6 +261,20 @@ export function MapView() {
       setShowPopup(true);
     }
   }, [map, selectedPropertyId]);
+
+  // Handle map type changes
+  useEffect(() => {
+    if (map) {
+      map.setMapTypeId(mapType === 'satellite' ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP);
+    }
+  }, [map, mapType]);
+
+  // Handle transit layer toggle
+  useEffect(() => {
+    if (map && transitLayer) {
+      transitLayer.setMap(showTransit ? map : null);
+    }
+  }, [map, transitLayer, showTransit]);
 
   const handleMarkerClick = (propertyId: string) => {
     if (selectedPropertyId === propertyId) {
@@ -300,46 +323,90 @@ export function MapView() {
   }
 
   return (
-    <GoogleMap
-      mapContainerStyle={mapContainerStyle}
-      center={settings.centerPoint}
-      zoom={12}
-      options={mapOptions}
-      onLoad={onLoad}
-      onUnmount={onUnmount}
-      onClick={handleMapClick}
-    >
-      {/* Center Point Marker */}
-      <Marker
-        position={settings.centerPoint}
-        icon={{
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: '#F59E0B',
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 3,
-        }}
-        title={settings.centerPoint.name}
-      />
-
-      {/* Property Markers - only render when map is ready */}
-      {mapReady && filteredProperties.map((property) => (
-        <PropertyMarker
-          key={property.id}
-          property={property}
-          isSelected={property.id === selectedPropertyId}
-          onClick={() => handleMarkerClick(property.id)}
+    <div className="relative h-full w-full">
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={settings.centerPoint}
+        zoom={12}
+        options={mapOptions}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        onClick={handleMapClick}
+      >
+        {/* Center Point Marker */}
+        <Marker
+          position={settings.centerPoint}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 12,
+            fillColor: '#F59E0B',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 3,
+          }}
+          title={settings.centerPoint.name}
         />
-      ))}
 
-      {/* Property Popup */}
-      {mapReady && selectedProperty?.coordinates && showPopup && (
-        <PropertyPopup
-          property={selectedProperty}
-          onClose={() => setShowPopup(false)}
-        />
-      )}
-    </GoogleMap>
+        {/* Property Markers - only render when map is ready */}
+        {mapReady && filteredProperties.map((property) => (
+          <PropertyMarker
+            key={property.id}
+            property={property}
+            isSelected={property.id === selectedPropertyId}
+            onClick={() => handleMarkerClick(property.id)}
+          />
+        ))}
+
+        {/* Property Popup */}
+        {mapReady && selectedProperty?.coordinates && showPopup && (
+          <PropertyPopup
+            property={selectedProperty}
+            onClose={() => setShowPopup(false)}
+          />
+        )}
+      </GoogleMap>
+
+      {/* Map Controls Overlay */}
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+        {/* Map Type Toggle */}
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setMapType('roadmap')}
+            className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors ${
+              mapType === 'roadmap'
+                ? 'bg-primary-700 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title="Road Map"
+          >
+            🗺️ Map
+          </button>
+          <button
+            onClick={() => setMapType('satellite')}
+            className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors border-t border-gray-200 ${
+              mapType === 'satellite'
+                ? 'bg-primary-700 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title="Satellite View"
+          >
+            🛰️ Satellite
+          </button>
+        </div>
+
+        {/* Transit Layer Toggle */}
+        <button
+          onClick={() => setShowTransit(!showTransit)}
+          className={`px-4 py-2 text-sm font-medium rounded-lg shadow-lg border transition-colors ${
+            showTransit
+              ? 'bg-primary-700 text-white border-primary-700'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+          }`}
+          title="Toggle Public Transport"
+        >
+          🚇 Transit
+        </button>
+      </div>
+    </div>
   );
 }

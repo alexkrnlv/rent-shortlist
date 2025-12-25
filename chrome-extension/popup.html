@@ -347,6 +347,36 @@
       margin-top: 6px;
     }
 
+    /* Session selector */
+    .session-selector {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .session-selector label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .session-selector select {
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.9);
+      cursor: pointer;
+    }
+
+    .session-selector select:focus {
+      outline: none;
+      background: white;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -369,6 +399,14 @@
 
     <!-- Add View -->
     <div id="add-view">
+      <!-- Session Selector -->
+      <div class="session-selector" id="session-selector">
+        <label>Add to Session</label>
+        <select id="session-select">
+          <option value="">Loading sessions...</option>
+        </select>
+      </div>
+
       <div class="property-card">
         <div class="thumbnail" id="thumbnail-container">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">

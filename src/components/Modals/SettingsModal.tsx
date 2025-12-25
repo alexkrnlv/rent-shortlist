@@ -3,8 +3,9 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { usePropertyStore } from '../../store/usePropertyStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
-import { MapPin, GraduationCap } from 'lucide-react';
+import { MapPin, GraduationCap, RefreshCw } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,11 +14,13 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { settings, setCenterPoint } = useSettingsStore();
+  const { recalculateDistances, properties } = usePropertyStore();
   const { startTutorial, resetTutorial } = useTutorialStore();
 
   const [centerName, setCenterName] = useState(settings.centerPoint.name);
   const [centerLat, setCenterLat] = useState(settings.centerPoint.lat.toString());
   const [centerLng, setCenterLng] = useState(settings.centerPoint.lng.toString());
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -27,12 +30,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }, [isOpen, settings]);
 
-  const handleSave = () => {
-    setCenterPoint({
+  const handleSave = async () => {
+    const newCenter = {
       name: centerName,
       lat: parseFloat(centerLat) || 51.5142,
       lng: parseFloat(centerLng) || -0.0885,
-    });
+    };
+    
+    // Check if center point actually changed
+    const hasChanged = 
+      newCenter.lat !== settings.centerPoint.lat || 
+      newCenter.lng !== settings.centerPoint.lng;
+    
+    setCenterPoint(newCenter);
+    
+    // Recalculate distances if center changed and there are properties
+    if (hasChanged && properties.length > 0) {
+      setIsRecalculating(true);
+      try {
+        await recalculateDistances({ lat: newCenter.lat, lng: newCenter.lng });
+      } catch (error) {
+        console.error('Failed to recalculate distances:', error);
+      }
+      setIsRecalculating(false);
+    }
+    
     onClose();
   };
 
@@ -127,11 +149,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={isRecalculating}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave}>
-            Save Settings
+          <Button variant="primary" onClick={handleSave} disabled={isRecalculating}>
+            {isRecalculating ? (
+              <>
+                <RefreshCw size={16} className="mr-2 animate-spin" />
+                Recalculating...
+              </>
+            ) : (
+              'Save Settings'
+            )}
           </Button>
         </div>
       </div>

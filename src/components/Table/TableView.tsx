@@ -563,7 +563,24 @@ export function TableView() {
                   >
                     <div className="flex items-center gap-2">Distance <SortIcon field="distance" /></div>
                   </th>
-                  <th className="py-3 px-3 text-left font-semibold text-sm">Transport</th>
+                  <th
+                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
+                    onClick={() => handleSort('publicTransport')}
+                  >
+                    <div className="flex items-center gap-2"><Train size={14} /> Transit <SortIcon field="publicTransport" /></div>
+                  </th>
+                  <th
+                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
+                    onClick={() => handleSort('walking')}
+                  >
+                    <div className="flex items-center gap-2"><PersonStanding size={14} /> Walk <SortIcon field="walking" /></div>
+                  </th>
+                  <th
+                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
+                    onClick={() => handleSort('driving')}
+                  >
+                    <div className="flex items-center gap-2"><Car size={14} /> Drive <SortIcon field="driving" /></div>
+                  </th>
                   <th className="py-3 px-3 text-left font-semibold text-sm w-32">Tags</th>
                   <th className="py-3 px-3 text-left font-semibold text-sm">Notes</th>
                   <th className="py-3 px-3 text-center font-semibold text-sm w-24">Actions</th>
@@ -666,29 +683,37 @@ export function TableView() {
                       )}
                     </td>
 
-                    {/* Transport Times */}
+                    {/* Public Transport Time */}
                     <td className="py-2 px-3">
-                      {property.distances ? (
-                        <div className="flex flex-wrap gap-1">
-                          {property.distances.publicTransport && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]">
-                              <Train size={10} />
-                              {property.distances.publicTransport.duration}
-                            </span>
-                          )}
-                          {property.distances.walking && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px]">
-                              <PersonStanding size={10} />
-                              {property.distances.walking.duration}
-                            </span>
-                          )}
-                          {property.distances.driving && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded text-[10px]">
-                              <Car size={10} />
-                              {property.distances.driving.duration}
-                            </span>
-                          )}
-                        </div>
+                      {property.distances?.publicTransport ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-medium">
+                          <Train size={10} />
+                          {property.distances.publicTransport.duration}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      )}
+                    </td>
+
+                    {/* Walking Time */}
+                    <td className="py-2 px-3">
+                      {property.distances?.walking ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px] font-medium">
+                          <PersonStanding size={10} />
+                          {property.distances.walking.duration}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      )}
+                    </td>
+
+                    {/* Driving Time */}
+                    <td className="py-2 px-3">
+                      {property.distances?.driving ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded text-[10px] font-medium">
+                          <Car size={10} />
+                          {property.distances.driving.duration}
+                        </span>
                       ) : (
                         <span className="text-gray-400 text-sm">—</span>
                       )}

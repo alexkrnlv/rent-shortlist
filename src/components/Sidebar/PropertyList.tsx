@@ -2,12 +2,18 @@ import { usePropertyStore } from '../../store/usePropertyStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { PropertyCard } from './PropertyCard';
 import { PendingPropertyCard } from './PendingPropertyCard';
-import { MapPin } from 'lucide-react';
+import { MapPin, Plus } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
-export function PropertyList() {
+interface PropertyListProps {
+  onAddClick: () => void;
+}
+
+export function PropertyList({ onAddClick }: PropertyListProps) {
   const { getFilteredProperties, selectedPropertyId, setSelectedProperty, updateProperty, removeProperty, tags, addTagToProperty, removeTagFromProperty, pendingProperties, removePendingProperty } = usePropertyStore();
   const { settings } = useSettingsStore();
   const properties = getFilteredProperties();
+  const propertyRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const handleTagToggle = (propertyId: string, tagId: string) => {
     const property = properties.find(p => p.id === propertyId);
@@ -17,6 +23,16 @@ export function PropertyList() {
       addTagToProperty(propertyId, tagId);
     }
   };
+
+  // Scroll to selected property when it changes
+  useEffect(() => {
+    if (selectedPropertyId && propertyRefs.current[selectedPropertyId]) {
+      propertyRefs.current[selectedPropertyId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [selectedPropertyId]);
 
   const handleAddressChange = async (propertyId: string, newAddress: string) => {
     // First update the address text
@@ -84,18 +100,38 @@ export function PropertyList() {
 
   if (!hasPending && !hasProperties) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="text-center">
           <MapPin size={48} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">No properties yet</h3>
-          <p className="text-sm text-gray-500">Click "Add Property" to get started</p>
+          <p className="text-sm text-gray-500 mb-4">Click "Add Property" to get started</p>
+          <button
+            onClick={onAddClick}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
+          >
+            <Plus size={18} />
+            Add Property
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Add Property Button */}
+      <div className="px-3 md:px-4 pt-3 md:pt-4 pb-2 border-b border-gray-200">
+        <button
+          onClick={onAddClick}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors shadow-sm"
+        >
+          <Plus size={18} />
+          Add Property
+        </button>
+      </div>
+
+      {/* Property List */}
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
       {/* Pending properties (being processed) - shown first */}
       {pendingProperties.map((pending) => (
         <PendingPropertyCard
@@ -107,21 +143,23 @@ export function PropertyList() {
       
       {/* Regular properties */}
       {properties.map((property) => (
-        <PropertyCard
-          key={property.id}
-          property={property}
-          isSelected={property.id === selectedPropertyId}
-          availableTags={tags}
-          onClick={() => setSelectedProperty(property.id === selectedPropertyId ? null : property.id)}
-          onRemove={() => removeProperty(property.id)}
-          onCommentChange={(comment) => updateProperty(property.id, { comment })}
-          onRatingChange={(rating) => updateProperty(property.id, { rating: rating || null })}
-          onPriceChange={(price) => updateProperty(property.id, { price: price || undefined })}
-          onAddressChange={(address) => handleAddressChange(property.id, address)}
-          onBTRChange={(isBTR) => updateProperty(property.id, { isBTR })}
-          onTagToggle={(tagId) => handleTagToggle(property.id, tagId)}
-        />
+        <div key={property.id} ref={(el) => { propertyRefs.current[property.id] = el; }}>
+          <PropertyCard
+            property={property}
+            isSelected={property.id === selectedPropertyId}
+            availableTags={tags}
+            onClick={() => setSelectedProperty(property.id === selectedPropertyId ? null : property.id)}
+            onRemove={() => removeProperty(property.id)}
+            onCommentChange={(comment) => updateProperty(property.id, { comment })}
+            onRatingChange={(rating) => updateProperty(property.id, { rating: rating || null })}
+            onPriceChange={(price) => updateProperty(property.id, { price: price || undefined })}
+            onAddressChange={(address) => handleAddressChange(property.id, address)}
+            onBTRChange={(isBTR) => updateProperty(property.id, { isBTR })}
+            onTagToggle={(tagId) => handleTagToggle(property.id, tagId)}
+          />
+        </div>
       ))}
+      </div>
     </div>
   );
 }

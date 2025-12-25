@@ -30,11 +30,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   elements.appUrlInput = document.getElementById('app-url');
   elements.settingsToggle = document.getElementById('settings-toggle');
   elements.settingsPanel = document.getElementById('settings-panel');
+  elements.sessionSelect = document.getElementById('session-select');
 
   // Load saved app URL
-  const stored = await chrome.storage.local.get(['appUrl']);
+  const stored = await chrome.storage.local.get(['appUrl', 'selectedSessionId']);
   const savedUrl = stored.appUrl || '';
   elements.appUrlInput.value = savedUrl;
+
+  // Load sessions
+  await loadSessions();
 
   // Save app URL on change
   elements.appUrlInput.addEventListener('change', () => {
@@ -49,6 +53,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Settings toggle
   elements.settingsToggle.addEventListener('click', () => {
     elements.settingsPanel.classList.toggle('hidden');
+  });
+
+  // Session selection change handler
+  elements.sessionSelect.addEventListener('change', async () => {
+    const selectedSessionId = elements.sessionSelect.value;
+    await chrome.storage.local.set({ selectedSessionId });
   });
 
   // Check if URL is configured
@@ -291,6 +301,29 @@ async function handleAdd() {
     showSetupRequired();
     elements.settingsPanel.classList.remove('hidden');
     return;
+  }
+
+  // Check if user wants to create new session
+  const selectedSessionId = elements.sessionSelect.value;
+  if (selectedSessionId === '__new__') {
+    // Create new session first
+    try {
+      const response = await safeFetch(`${apiUrl}/api/sessions`, {
+        method: 'POST',
+        body: JSON.stringify({ data: {} }),
+      });
+      
+      const newSession = response;
+      // Save new session as selected
+      await chrome.storage.local.set({ selectedSessionId: newSession.id });
+      // Reload sessions and continue with add
+      await loadSessions();
+      // Don't return, continue with the add
+    } catch (error) {
+      console.error('Failed to create new session:', error);
+      showError('Failed to create new session. Please try again.');
+      return;
+    }
   }
   
   // Disable button, show loading

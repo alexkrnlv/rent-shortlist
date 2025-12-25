@@ -62,6 +62,25 @@ function App() {
     }
   };
 
+  // Handle new session creation
+  const handleNewSession = async () => {
+    try {
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: {} }), // Empty session
+      });
+      
+      if (response.ok) {
+        const { id } = await response.json();
+        // Navigate to new session URL
+        window.location.href = `/s/${id}`;
+      }
+    } catch (error) {
+      console.error('Failed to create new session:', error);
+    }
+  };
+
   return (
     <>
       <Layout
@@ -71,19 +90,18 @@ function App() {
         onMobileSidebarClose={() => setIsMobileSidebarOpen(false)}
         header={
           <Header
-            onAddClick={() => setShowAddModal(true)}
             onSettingsClick={() => setShowSettingsModal(true)}
             onExportClick={() => setShowExportModal(true)}
             onImportClick={() => setShowImportModal(true)}
             onShareClick={handleShare}
+            onNewSessionClick={handleNewSession}
             propertyCount={properties.length}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
             onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             isMobileSidebarOpen={isMobileSidebarOpen}
           />
         }
-        sidebar={<Sidebar />}
+        sidebar={<Sidebar viewMode={viewMode} onViewModeChange={setViewMode} onAddClick={() => setShowAddModal(true)} />}
         map={<MapView />}
         table={<TableView />}
       />

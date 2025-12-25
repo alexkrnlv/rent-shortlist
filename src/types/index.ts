@@ -50,7 +50,7 @@ export interface Settings {
   claudeApiKey: string;
 }
 
-export type SortField = 'rating' | 'distance' | 'price' | 'createdAt' | 'name';
+export type SortField = 'rating' | 'distance' | 'price' | 'createdAt' | 'name' | 'publicTransport' | 'walking' | 'driving';
 export type SortDirection = 'asc' | 'desc';
 
 export interface Filters {

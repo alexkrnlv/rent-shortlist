@@ -1162,6 +1162,23 @@ ${preparedContent}`,
         const extractedAddresses = extractAddressesWithContext(html);
         const validatedResult = validateAndCorrectAddress(parsed, extractedAddresses, html);
         
+        // Final validation with Google - if address doesn't geocode, reject it
+        if (validatedResult.address) {
+          const googleValidation = await validateAddressWithGoogle(validatedResult.address);
+          if (googleValidation.isValid && googleValidation.coordinates) {
+            // Use Google's corrected address if available
+            if (googleValidation.correctedAddress) {
+              console.log('Google corrected address to:', googleValidation.correctedAddress);
+              validatedResult.address = googleValidation.correctedAddress;
+            }
+            // Store coordinates from Google validation for faster subsequent geocoding
+            validatedResult.googleCoordinates = googleValidation.coordinates;
+          } else {
+            console.log('⚠️ Google could not validate address, clearing:', validatedResult.address);
+            validatedResult.address = '';
+          }
+        }
+        
         // Add images array and fallback thumbnail
         validatedResult.images = allImages;
         if (!validatedResult.thumbnail && allImages.length > 0) {
@@ -1466,44 +1483,57 @@ ${contentForAI.substring(0, 80000)}`,
     const parsed = JSON.parse(jsonMatch[0]);
     console.log('   Parsed:', parsed.name, '|', parsed.address);
     
-    // Validate the address - reject CSS/JS code
-    if (!isValidAddress(parsed.address)) {
-      console.log('   ⚠️ Invalid address detected, attempting fallback extraction');
+    // Validate the address - first quick check, then Google validation
+    let validatedAddress = parsed.address || '';
+    let coordinates: { lat: number; lng: number } | null = null;
+    
+    if (!isValidAddress(validatedAddress)) {
+      console.log('   ⚠️ Invalid address detected (basic check failed)');
+      validatedAddress = '';
+    }
+    
+    // Use Google Geocoding as the ultimate validation
+    if (validatedAddress) {
+      console.log('   Validating with Google:', validatedAddress);
+      const googleValidation = await validateAddressWithGoogle(validatedAddress);
       
-      // Try to extract address from URL or title
-      const urlMatch = property.url.match(/([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i);
-      if (urlMatch) {
-        parsed.address = urlMatch[1].toUpperCase();
-        console.log('   Fallback address from URL:', parsed.address);
+      if (googleValidation.isValid && googleValidation.coordinates) {
+        coordinates = googleValidation.coordinates;
+        // Use Google's formatted address if available (more accurate)
+        if (googleValidation.correctedAddress) {
+          console.log('   ✓ Google validated, corrected to:', googleValidation.correctedAddress);
+          validatedAddress = googleValidation.correctedAddress;
+        } else {
+          console.log('   ✓ Google validated:', coordinates.lat, coordinates.lng);
+        }
       } else {
-        // Clear invalid address
-        parsed.address = '';
-        console.log('   Could not find valid fallback address');
+        console.log('   ✗ Google could not validate address, rejecting');
+        validatedAddress = '';
+        coordinates = null;
       }
     }
     
-    // Geocode the address
-    let coordinates: { lat: number; lng: number } | null = null;
-    if (parsed.address) {
-      const geocodeKey = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
-      if (geocodeKey) {
-        try {
-          const geoResponse = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsed.address + ', UK')}&key=${geocodeKey}`
-          );
-          const geoData = await geoResponse.json();
-          if (geoData.results?.[0]?.geometry?.location) {
-            coordinates = {
-              lat: geoData.results[0].geometry.location.lat,
-              lng: geoData.results[0].geometry.location.lng,
-            };
-            console.log('   Geocoded:', coordinates.lat, coordinates.lng);
-          }
-        } catch (geoError) {
-          console.log('   Geocoding failed:', (geoError as Error).message);
+    // If Claude's address failed, try extracting from page title/URL
+    if (!validatedAddress) {
+      console.log('   Attempting fallback address extraction...');
+      
+      // Try to extract postcode from URL
+      const urlMatch = property.url.match(/([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i);
+      if (urlMatch) {
+        const postcodeAddress = urlMatch[1].toUpperCase();
+        console.log('   Trying postcode from URL:', postcodeAddress);
+        
+        const googleValidation = await validateAddressWithGoogle(postcodeAddress);
+        if (googleValidation.isValid && googleValidation.coordinates) {
+          validatedAddress = googleValidation.correctedAddress || postcodeAddress;
+          coordinates = googleValidation.coordinates;
+          console.log('   ✓ Fallback address validated:', validatedAddress);
         }
       }
     }
+    
+    // Update parsed with validated address
+    parsed.address = validatedAddress;
 
     // Update property with ALL parsed data
     await propertyStorage.update(property.id, {
@@ -1781,35 +1811,62 @@ Return ONLY valid JSON:
         const parsed = JSON.parse(jsonMatch[0]);
         console.log('Claude parsed:', JSON.stringify(parsed, null, 2));
         
-        // Validate the address - reject CSS/JS code
-        if (!isValidAddress(parsed.address)) {
-          console.log('⚠️ Invalid address detected from Claude, clearing it');
-          parsed.address = '';
+        // Validate the address - first quick check
+        let validatedAddress = parsed.address || '';
+        if (!isValidAddress(validatedAddress)) {
+          console.log('⚠️ Invalid address detected from Claude (basic check), clearing it');
+          validatedAddress = '';
         }
+        
+        // Use Google as the ultimate validation
+        if (validatedAddress) {
+          console.log('Validating with Google:', validatedAddress);
+          const googleValidation = await validateAddressWithGoogle(validatedAddress);
+          
+          if (googleValidation.isValid && googleValidation.coordinates) {
+            // Use Google's corrected address if available
+            if (googleValidation.correctedAddress) {
+              console.log('✓ Google validated, corrected to:', googleValidation.correctedAddress);
+              validatedAddress = googleValidation.correctedAddress;
+            }
+            parsed.coordinates = googleValidation.coordinates;
+          } else {
+            console.log('✗ Google could not validate address, rejecting');
+            validatedAddress = '';
+          }
+        }
+        
+        // If address still empty, try to extract from page title
+        if (!validatedAddress && pageContent.pageTitle) {
+          console.log('Trying fallback address extraction from title...');
+          const postcodeMatch = pageContent.pageTitle.match(/([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i);
+          if (postcodeMatch) {
+            const segments = pageContent.pageTitle.split(/[|\-–]/);
+            for (const seg of segments) {
+              if (seg.match(/[A-Z]{1,2}\d/i) && !seg.toLowerCase().includes('bed')) {
+                const candidate = seg.trim();
+                console.log('Trying title segment:', candidate);
+                
+                // Validate with Google
+                const googleValidation = await validateAddressWithGoogle(candidate);
+                if (googleValidation.isValid && googleValidation.coordinates) {
+                  validatedAddress = googleValidation.correctedAddress || candidate;
+                  parsed.coordinates = googleValidation.coordinates;
+                  console.log('✓ Fallback address validated:', validatedAddress);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        parsed.address = validatedAddress;
         
         // Ensure we have images from the original content
         if (!parsed.thumbnail && pageContent.images && pageContent.images.length > 0) {
           parsed.thumbnail = pageContent.images[0];
         }
         parsed.images = pageContent.images || [];
-        
-        // If address is still empty or invalid, try to extract from page title
-        if (!parsed.address && pageContent.pageTitle) {
-          console.log('No address from Claude, trying page title extraction...');
-          // Look for postcode pattern in title
-          const postcodeMatch = pageContent.pageTitle.match(/([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i);
-          if (postcodeMatch) {
-            // Find the segment containing the postcode
-            const segments = pageContent.pageTitle.split(/[|\-–]/);
-            for (const seg of segments) {
-              if (seg.match(/[A-Z]{1,2}\d/i) && !seg.toLowerCase().includes('bed')) {
-                parsed.address = seg.trim();
-                console.log('Extracted from title:', parsed.address);
-                break;
-              }
-            }
-          }
-        }
         
         return res.json(parsed);
       } catch (e) {
@@ -1830,14 +1887,38 @@ Return ONLY valid JSON:
   }
 });
 
-// Validate that an address looks like a real UK address (not CSS/JS code)
+// Validate that an address looks like a real UK address (not CSS/JS/URL garbage)
 function isValidAddress(address: string | null | undefined): boolean {
   if (!address || typeof address !== 'string') return false;
   
   const trimmed = address.trim();
   if (trimmed.length < 3 || trimmed.length > 200) return false;
   
-  // Patterns that indicate CSS/JS code - NOT a valid address
+  // Quick check: if address contains "http" anywhere, it's a URL not an address
+  if (/http/i.test(trimmed)) {
+    console.log(`Invalid address (contains http): "${trimmed.substring(0, 80)}..."`);
+    return false;
+  }
+  
+  // Quick check: if address contains file extensions, it's a file path
+  if (/\.(jpg|jpeg|png|gif|webp|svg|pdf|html|css|js)\b/i.test(trimmed)) {
+    console.log(`Invalid address (contains file extension): "${trimmed.substring(0, 80)}..."`);
+    return false;
+  }
+  
+  // Quick check: if address contains forward slashes (not common in UK addresses)
+  if ((trimmed.match(/[\/\\]/g) || []).length > 2) {
+    console.log(`Invalid address (too many slashes): "${trimmed.substring(0, 80)}..."`);
+    return false;
+  }
+  
+  // Quick check: if address starts with numbers followed by letters that look like URL
+  if (/^\d+[a-z]*https?/i.test(trimmed)) {
+    console.log(`Invalid address (number+http pattern): "${trimmed.substring(0, 80)}..."`);
+    return false;
+  }
+  
+  // Patterns that indicate CSS/JS/URL garbage - NOT a valid address
   const invalidPatterns = [
     /\{[^}]*\}/, // CSS blocks: { ... }
     /\.[a-z-]+\s*\{/i, // CSS selectors: .class {
@@ -1855,16 +1936,21 @@ function isValidAddress(address: string | null | undefined): boolean {
     /padding|margin|border|background|display|position|font|color|width|height/i, // CSS properties
     /webkit|moz|ms-/i, // Browser prefixes
     /data-v-[a-f0-9]+/i, // Vue scoped styles
-    /\.webp\)|\.jpg\)|\.png\)/i, // Image file references in CSS
     /\bpx\b|\bem\b|\brem\b|\b%\s*\)/i, // CSS units in context
     /visibility:\s*hidden/i, // CSS visibility
     /overflow:\s*hidden/i, // CSS overflow
     /\bvar\s*\(/i, // CSS variables
+    /www\./i, // URLs starting with www
+    /\.com|\.co\.uk|\.org|\.net/i, // Domain extensions (except in street names)
+    /\?itok=|\?token=|\?v=|\?id=|&[a-z]+=/i, // URL query parameters
+    /[a-f0-9]{16,}/i, // Long hex strings (likely IDs/hashes) - reduced from 20 to 16
+    /sites\/default|files\/styles|unit_files/i, // CMS file paths
+    /public\/|private\//i, // File system paths
   ];
   
   for (const pattern of invalidPatterns) {
     if (pattern.test(trimmed)) {
-      console.log(`Invalid address detected (matches ${pattern}): "${trimmed.substring(0, 50)}..."`);
+      console.log(`Invalid address detected (matches ${pattern}): "${trimmed.substring(0, 80)}..."`);
       return false;
     }
   }
@@ -1872,14 +1958,69 @@ function isValidAddress(address: string | null | undefined): boolean {
   // Should contain at least some letter characters
   if (!/[a-zA-Z]{2,}/.test(trimmed)) return false;
   
-  // Additional heuristic: if it has too many special characters, likely code
-  const specialCharCount = (trimmed.match(/[{}\[\]();:=<>]/g) || []).length;
+  // Additional heuristic: if it has too many special characters, likely code/URL
+  const specialCharCount = (trimmed.match(/[{}\[\]();:=<>\\\/\?&]/g) || []).length;
   if (specialCharCount > 3) {
-    console.log(`Invalid address detected (too many special chars): "${trimmed.substring(0, 50)}..."`);
+    console.log(`Invalid address detected (too many special chars: ${specialCharCount}): "${trimmed.substring(0, 80)}..."`);
+    return false;
+  }
+  
+  // Check ratio of digits to letters - addresses shouldn't be mostly numbers
+  const digitCount = (trimmed.match(/\d/g) || []).length;
+  const letterCount = (trimmed.match(/[a-zA-Z]/g) || []).length;
+  if (digitCount > letterCount * 2) {
+    console.log(`Invalid address detected (too many digits): "${trimmed.substring(0, 80)}..."`);
     return false;
   }
   
   return true;
+}
+
+// Validate address using Google Geocoding API - the ultimate test
+async function validateAddressWithGoogle(address: string): Promise<{ isValid: boolean; correctedAddress?: string; coordinates?: { lat: number; lng: number } }> {
+  const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+  
+  if (!apiKey) {
+    console.log('No Google API key for address validation');
+    return { isValid: true }; // Can't validate without API key, assume valid
+  }
+  
+  try {
+    // Add UK context for better results
+    const searchAddress = address.toLowerCase().includes('uk') || address.toLowerCase().includes('london')
+      ? address
+      : `${address}, UK`;
+    
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${apiKey}&components=country:GB`;
+    
+    const response = await fetch(geocodeUrl);
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const result = data.results[0];
+      const location = result.geometry.location;
+      
+      // Check if the result is in the UK (rough bounds check)
+      const isInUK = location.lat >= 49 && location.lat <= 61 && location.lng >= -11 && location.lng <= 2;
+      
+      if (isInUK) {
+        return {
+          isValid: true,
+          correctedAddress: result.formatted_address,
+          coordinates: { lat: location.lat, lng: location.lng },
+        };
+      } else {
+        console.log(`Address geocoded but not in UK: ${location.lat}, ${location.lng}`);
+        return { isValid: false };
+      }
+    }
+    
+    console.log(`Google could not geocode address: "${address}" - status: ${data.status}`);
+    return { isValid: false };
+  } catch (error) {
+    console.error('Error validating address with Google:', error);
+    return { isValid: true }; // On error, don't block - assume valid
+  }
 }
 
 // Clean and sanitize content for AI parsing

@@ -1375,7 +1375,7 @@ async function processPropertyInBackground(property: ExtensionProperty): Promise
       status: 'processing',
     });
 
-    const claudeApiKey = process.env.ANTHROPIC_API_KEY;
+    const claudeApiKey = process.env.VITE_CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     if (!claudeApiKey) {
       throw new Error('No Claude API key available for background processing');
     }
@@ -1458,7 +1458,7 @@ ${contentForAI.substring(0, 80000)}`,
     // Geocode the address
     let coordinates: { lat: number; lng: number } | null = null;
     if (parsed.address) {
-      const geocodeKey = process.env.GOOGLE_MAPS_API_KEY;
+      const geocodeKey = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
       if (geocodeKey) {
         try {
           const geoResponse = await fetch(
@@ -1655,7 +1655,7 @@ app.post('/api/parse-property-content', async (req, res) => {
       return res.status(400).json({ error: 'Page content is required' });
     }
 
-    const claudeApiKey = process.env.ANTHROPIC_API_KEY;
+    const claudeApiKey = process.env.VITE_CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     
     // If no API key, do basic extraction from the provided content
     if (!claudeApiKey) {

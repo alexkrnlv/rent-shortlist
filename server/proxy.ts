@@ -1180,64 +1180,54 @@ app.post('/api/parse-property-content', async (req, res) => {
 
     const claudeApiKey = process.env.ANTHROPIC_API_KEY;
     
-    // Prepare content for Claude
-    const preparedContent = prepareExtractedContentForAI(pageContent);
-    
     // If no API key, do basic extraction from the provided content
     if (!claudeApiKey) {
       const basicResult = extractBasicFromContent(pageContent);
       return res.json(basicResult);
     }
 
-    // Use Claude to parse the content
+    // Truncate page text to fit within Claude's context (leave room for prompt)
+    const maxTextLength = 30000;
+    const pageText = (pageContent.fullPageText || '').substring(0, maxTextLength);
+
+    // Use Claude to parse the content - give it ALL the text and let it figure it out
     const anthropic = new Anthropic({ apiKey: claudeApiKey });
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      max_tokens: 1000,
       messages: [
         {
           role: 'user',
-          content: `You are an expert at analyzing UK property rental listings. Extract property details from this page content.
+          content: `You are extracting property details from a UK rental listing page.
 
-## YOUR TASK
+URL: ${pageContent.url}
+PAGE TITLE: ${pageContent.pageTitle}
 
-Extract the PROPERTY ADDRESS (where the rental is located), NOT the estate agent's office address.
+AVAILABLE IMAGES:
+${(pageContent.images || []).slice(0, 5).join('\n')}
 
-## KEY RULES
-
-1. **H1 HEADINGS contain the PROPERTY ADDRESS** - This is the most reliable source
-2. **SIDEBAR and FOOTER contain AGENT addresses** - IGNORE these for the property location
-3. Look for UK postcodes (e.g., SE18, E14 5AB, NW1 4PN)
-
-## EXAMPLES
-
-H1: "Baldwin Lane, London SE3" → Property address is "Baldwin Lane, London SE3"
-SIDEBAR: "Agent: 91 Main Road, Sidcup, DA14" → IGNORE this - it's the agent office
-
-## RESPONSE FORMAT
-
-Return ONLY a JSON object:
-
-{
-  "name": "descriptive name, e.g., '3 bed terraced house, Baldwin Lane'",
-  "address": "the PROPERTY address with postcode if available",
-  "price": "rent amount if found, e.g., '£2,500 pcm'",
-  "bedrooms": number or null,
-  "bathrooms": number or null,
-  "propertyType": "flat/house/studio/apartment/etc.",
-  "isBTR": true if this is a Build-to-Rent development (Quintain, Greystar, Get Living, etc.),
-  "thumbnail": "best image URL from the images list"
-}
-
-## BTR Indicators
-Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, "Build to Rent", "BTR".
+FULL PAGE TEXT:
+${pageText}
 
 ---
 
-PAGE CONTENT:
+From the above page content, extract the property details. 
 
-${preparedContent}`,
+IMPORTANT: 
+- The PROPERTY ADDRESS is where the rental is located (usually in the page title or main heading)
+- IGNORE agent/estate agent office addresses (these appear in "Marketed by", "Contact", footer sections)
+- The address should be a street/area name with postcode (e.g., "Charlton Road, Blackheath, SE3")
+- Do NOT include "X bed flat to rent" or similar text in the address - just the location
+
+Return ONLY a JSON object with these fields:
+{
+  "name": "Short descriptive title (e.g., '1 bed flat, Charlton Road' or 'Studio apartment, Canary Wharf')",
+  "address": "Just the property location with postcode (e.g., 'Charlton Road, Blackheath, SE3')",
+  "price": "Monthly rent if found (e.g., '£1,750 pcm')",
+  "bedrooms": number or null,
+  "isBTR": true if Build-to-Rent (Quintain, Greystar, Get Living, Grainger, Fizzy, etc.)
+}`,
         },
       ],
     });
@@ -1256,6 +1246,7 @@ ${preparedContent}`,
         }
         parsed.images = pageContent.images || [];
         
+        console.log('Claude extracted:', parsed);
         return res.json(parsed);
       } catch (e) {
         console.error('Failed to parse AI response:', e);
@@ -1272,109 +1263,44 @@ ${preparedContent}`,
   }
 });
 
-// Prepare extracted content for AI parsing
-function prepareExtractedContentForAI(content: any): string {
-  let text = '';
-  
-  // URL for context
-  text += `URL: ${content.url}\n\n`;
-  
-  // Page title - very important
-  text += `## PAGE TITLE\n${content.pageTitle}\n\n`;
-  
-  // H1 headings - usually contain the property address
-  if (content.headings?.h1?.length > 0) {
-    text += `## H1 HEADINGS (PROPERTY ADDRESS is usually here)\n`;
-    text += content.headings.h1.join('\n');
-    text += '\n\n';
-  }
-  
-  // Meta description
-  if (content.metaTags?.description || content.metaTags?.['og:description']) {
-    text += `## DESCRIPTION\n${content.metaTags.description || content.metaTags['og:description']}\n\n`;
-  }
-  
-  // Property features
-  if (content.propertyFeatures?.length > 0) {
-    text += `## PROPERTY FEATURES\n${content.propertyFeatures.join(', ')}\n\n`;
-  }
-  
-  // Price info
-  if (content.priceInfo?.length > 0) {
-    text += `## PRICES FOUND\n${content.priceInfo.join(', ')}\n\n`;
-  }
-  
-  // Images
-  if (content.images?.length > 0) {
-    text += `## IMAGES\n${content.images.slice(0, 5).join('\n')}\n\n`;
-  }
-  
-  // Structured data (JSON-LD)
-  if (content.structuredData?.length > 0) {
-    text += `## STRUCTURED DATA\n${JSON.stringify(content.structuredData, null, 2)}\n\n`;
-  }
-  
-  // Main content
-  if (content.mainContent) {
-    text += `## MAIN CONTENT (property details are here)\n${content.mainContent.substring(0, 6000)}\n\n`;
-  }
-  
-  // Sidebar - mark as potential agent info
-  if (content.sidebarContent) {
-    text += `## SIDEBAR (often contains AGENT info - NOT the property address)\n${content.sidebarContent.substring(0, 1500)}\n\n`;
-  }
-  
-  // Footer - mark as company/agent info
-  if (content.footerContent) {
-    text += `## FOOTER (contains AGENT/COMPANY addresses - NOT the property)\n${content.footerContent.substring(0, 1000)}\n\n`;
-  }
-  
-  return text;
-}
-
-// Basic extraction from content without AI
+// Basic extraction from content without AI (fallback)
 function extractBasicFromContent(content: any): any {
   const result: any = {
-    name: '',
+    name: content.pageTitle?.split('|')[0]?.split('-')[0]?.trim() || 'Property',
     address: '',
-    thumbnail: content.images?.[0] || content.metaTags?.['og:image'] || '',
+    thumbnail: content.images?.[0] || '',
     images: content.images || [],
     isBTR: false,
   };
   
-  // Try to get name from H1 or page title
-  if (content.headings?.h1?.length > 0) {
-    result.name = content.headings.h1[0];
-  } else if (content.pageTitle) {
-    result.name = content.pageTitle.split('|')[0].split('-')[0].trim();
-  }
-  
-  // Try to extract address from H1 or title
-  const h1Text = content.headings?.h1?.join(' ') || '';
+  // Try to extract address from page title using postcode pattern
   const titleText = content.pageTitle || '';
-  const combinedText = `${h1Text} ${titleText}`;
-  
-  // Look for UK postcode pattern
-  const postcodeMatch = combinedText.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
+  const postcodeMatch = titleText.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
   if (postcodeMatch) {
-    // Try to extract the full address around the postcode
-    const addressMatch = combinedText.match(/([^,|]+,?\s*(?:London|Greater London)?[^,|]*,?\s*[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
-    result.address = addressMatch ? addressMatch[1].trim() : postcodeMatch[0];
+    // Find the part of the title that contains the address
+    const parts = titleText.split(/[|\-–]/);
+    for (const part of parts) {
+      if (part.match(/[A-Z]{1,2}\d/i)) {
+        result.address = part.trim();
+        break;
+      }
+    }
   }
   
-  // Check for BTR indicators
-  const allText = (content.allText || content.mainContent || '').toLowerCase();
+  // Check for BTR indicators in full page text
+  const fullText = (content.fullPageText || '').toLowerCase();
   const btrKeywords = [
     'build to rent', 'build-to-rent', 'btr', 'quintain', 'greystar',
     'get living', 'essential living', 'fizzy living', 'grainger', 'tipi',
     'uncle', 'apo', 'canvas', 'platform_', 'lendlease', 'related argent',
     'vertus', 'moda living'
   ];
-  result.isBTR = btrKeywords.some(kw => allText.includes(kw));
+  result.isBTR = btrKeywords.some(kw => fullText.includes(kw));
   
   // Extract price
-  if (content.priceInfo?.length > 0) {
-    result.price = content.priceInfo[0];
+  const priceMatch = fullText.match(/£[\d,]+(?:\s*(?:pcm|pm|per month))?/i);
+  if (priceMatch) {
+    result.price = priceMatch[0];
   }
   
   return result;

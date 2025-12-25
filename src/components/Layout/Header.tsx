@@ -1,4 +1,4 @@
-import { Settings, Download, Plus, Upload, Map, Table2 } from 'lucide-react';
+import { Settings, Download, Plus, Upload, Map, Table2, Share2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export type ViewMode = 'map' | 'table';
@@ -8,6 +8,7 @@ interface HeaderProps {
   onSettingsClick: () => void;
   onExportClick: () => void;
   onImportClick: () => void;
+  onShareClick: () => void;
   propertyCount: number;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
@@ -18,6 +19,7 @@ export function Header({
   onSettingsClick,
   onExportClick,
   onImportClick,
+  onShareClick,
   propertyCount,
   viewMode,
   onViewModeChange,
@@ -92,12 +94,19 @@ export function Header({
             <Download size={18} className="mr-1.5" />
             Export
           </Button>
-          {/* Mobile Import/Export */}
+          <Button variant="ghost" size="sm" onClick={onShareClick} className="hidden lg:inline-flex">
+            <Share2 size={18} className="mr-1.5" />
+            Share
+          </Button>
+          {/* Mobile Import/Export/Share */}
           <Button variant="ghost" size="sm" onClick={onImportClick} className="lg:hidden p-2">
             <Upload size={18} />
           </Button>
           <Button variant="ghost" size="sm" onClick={onExportClick} className="lg:hidden p-2">
             <Download size={18} />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onShareClick} className="lg:hidden p-2" title="Share">
+            <Share2 size={18} />
           </Button>
           <Button variant="ghost" size="sm" onClick={onSettingsClick}>
             <Settings size={18} className="lg:mr-1.5" />

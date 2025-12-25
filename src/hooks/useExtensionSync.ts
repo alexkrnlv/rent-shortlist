@@ -90,10 +90,10 @@ export function useExtensionSync() {
           if (distResponse.ok) {
             const distData = await distResponse.json();
             distances = {
-              transit: distData.transit?.duration,
-              walking: distData.walking?.duration,
-              driving: distData.driving?.duration,
               direct: calculateDirectDistance(coordinates, settings.centerPoint),
+              publicTransport: distData.transit ? { distance: distData.transit.distance, duration: distData.transit.duration } : null,
+              walking: distData.walking ? { distance: distData.walking.distance, duration: distData.walking.duration } : null,
+              driving: distData.driving ? { distance: distData.driving.distance, duration: distData.driving.duration } : null,
             };
           }
         } catch (e) {

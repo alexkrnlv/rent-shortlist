@@ -111,17 +111,9 @@ export function TutorialOverlay({ children }: TutorialOverlayProps) {
                   )}
                 </div>
 
-                {/* Content area with animation */}
+                {/* Content area */}
                 <div className="px-8 pt-8 pb-6">
-                  <Transition
-                    show={true}
-                    appear
-                    enter="ease-out duration-300"
-                    enterFrom="opacity-0 translate-x-4"
-                    enterTo="opacity-100 translate-x-0"
-                  >
-                    {children}
-                  </Transition>
+                  {children}
                 </div>
 
                 {/* Footer with navigation */}

@@ -10,6 +10,7 @@ import { ExportImportModal } from './components/Modals/ExportImportModal';
 import { Tutorial } from './components/Tutorial';
 import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
+import { useSettingsStore } from './store/useSettingsStore';
 import { useTutorialStore } from './store/useTutorialStore';
 import { useExtensionSync } from './hooks/useExtensionSync';
 import { useUrlSession } from './hooks/useUrlSession';

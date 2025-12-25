@@ -209,15 +209,131 @@ function extractImages(html: string): string[] {
 // Extract addresses with context labels and HTML location
 interface ExtractedAddress {
   postcode: string;
+  fullAddress: string;
   fullContext: string;
   source: 'PROPERTY' | 'AGENT_OFFICE' | 'DEVELOPER' | 'FOOTER' | 'CONTACT' | 'UNKNOWN';
   confidence: number;
   htmlLocation: string;
+  isFromTitle: boolean;
+}
+
+// Extract the PRIMARY property address from H1/title/body - handles both listings and BTR sites
+function extractPrimaryPropertyAddress(html: string): { address: string; postcode: string; source: string } | null {
+  // Get page title
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const title = titleMatch ? titleMatch[1] : '';
+  
+  // Get H1 (first one, which is usually the property/development name)
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  
+  // Get meta description
+  const descMatch = html.match(/name=["']description["'][^>]*content=["']([^"']+)["']/i);
+  const description = descMatch ? descMatch[1] : '';
+  
+  // Combined text to search for primary source (title/H1/description)
+  const primaryText = `${title} | ${h1} | ${description}`;
+  
+  // Look for UK postcode patterns (full or partial)
+  // Full postcode: SE18 1AB, NW10 6QQ
+  const fullPostcodeMatch = primaryText.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})/i);
+  // Partial postcode (outward code only): SE18, E14, NW1, SE1, etc.
+  const partialPostcodeMatch = primaryText.match(/[,\s]([A-Z]{1,2}\d{1,2}[A-Z]?)(?:\s*$|[,\s.|])/i);
+  
+  let postcode = fullPostcodeMatch ? fullPostcodeMatch[1].toUpperCase() : 
+                 partialPostcodeMatch ? partialPostcodeMatch[1].toUpperCase() : '';
+  let source = 'title';
+  
+  // Extract address from title/h1 patterns
+  const addressPatterns = [
+    // "3 bedroom house for rent in Barlow Drive, London, SE18"
+    /(?:for\s+rent|to\s+let|to\s+rent)\s+(?:in|at)\s+([^|]+)/i,
+    // "Barlow Drive, London, SE18" or "123 High Street, London, E14 5AB"
+    /([A-Za-z0-9\s]+(?:Street|St|Road|Rd|Lane|Ln|Avenue|Ave|Way|Close|Court|Ct|Place|Pl|Gardens|Gdns|Square|Sq|Terrace|Mews|Walk|Row|Crescent|Cres|Drive|Dr|Grove|Park|Hill|Canal|Wharf|Quay)[^|,]*(?:,\s*[A-Za-z\s]+)*,?\s*[A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i,
+    // Just the H1 if it looks like an address (with London or postcode)
+    /^([^|]+,\s*(?:London|Greater London)[^|]*)/i,
+  ];
+  
+  let extractedAddress = '';
+  for (const pattern of addressPatterns) {
+    const match = primaryText.match(pattern);
+    if (match) {
+      extractedAddress = match[1].trim()
+        .replace(/\s+/g, ' ')
+        .replace(/^[\s,]+|[\s,]+$/g, '');
+      break;
+    }
+  }
+  
+  // If H1 looks like an address (contains street name or area + postcode), use it
+  if (!extractedAddress && h1) {
+    const h1HasAddress = h1.match(/[A-Za-z]+\s*,\s*(?:London|[A-Z]{1,2}\d)/i);
+    if (h1HasAddress) {
+      extractedAddress = h1;
+    }
+  }
+  
+  // For BTR/development sites: if no postcode in title/H1, search in body content
+  if (!postcode) {
+    // Get main content area for BTR sites - look for address in page body
+    const mainContentMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i) ||
+                            html.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
+                            html.match(/<div[^>]*class=["'][^"']*(?:content|hero|property|location|address)[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi);
+    
+    const bodyContent = mainContentMatch 
+      ? (Array.isArray(mainContentMatch) ? mainContentMatch.join(' ') : mainContentMatch[1])
+      : html;
+    
+    // Clean and search for postcode in body
+    const cleanBody = bodyContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    
+    // Find full postcode in body content (prioritize ones near location keywords)
+    const locationContextMatch = cleanBody.match(/(?:address|location|located|find us|visit|canal|wharf|street|road|avenue)[^.]*?([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})/i);
+    const bodyFullPostcodeMatch = cleanBody.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})/i);
+    
+    if (locationContextMatch) {
+      postcode = locationContextMatch[1].toUpperCase();
+      source = 'body_with_context';
+    } else if (bodyFullPostcodeMatch) {
+      postcode = bodyFullPostcodeMatch[1].toUpperCase();
+      source = 'body';
+    }
+    
+    // Also try to extract a fuller address from body if we found a postcode
+    if (postcode && !extractedAddress) {
+      // Look for address pattern near the postcode we found
+      const postcodeEscaped = postcode.replace(/\s+/g, '\\s*');
+      const addressNearPostcode = cleanBody.match(new RegExp(`([A-Za-z0-9\\s,]+(?:Street|St|Road|Rd|Lane|Ln|Avenue|Ave|Way|Close|Court|Ct|Place|Pl|Gardens|Gdns|Square|Sq|Terrace|Mews|Walk|Row|Crescent|Cres|Drive|Dr|Grove|Park|Hill|Canal|Wharf|Quay|Gate)[^,]*,?[^,]*${postcodeEscaped})`, 'i'));
+      
+      if (addressNearPostcode) {
+        extractedAddress = addressNearPostcode[1].trim();
+      }
+    }
+  }
+  
+  // If we still don't have an address but have H1 (for BTR sites with development names)
+  if (!extractedAddress && h1 && postcode) {
+    // Use H1 (development name) + postcode
+    extractedAddress = `${h1}, ${postcode}`;
+  } else if (!extractedAddress && h1) {
+    // Just use H1 as the address/name
+    extractedAddress = h1;
+  }
+  
+  if (extractedAddress || postcode) {
+    return { address: extractedAddress || postcode, postcode, source };
+  }
+  
+  return null;
 }
 
 function extractAddressesWithContext(html: string): ExtractedAddress[] {
   const addresses: ExtractedAddress[] = [];
-  const postcodeRegex = /[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}/gi;
+  
+  // Full UK postcode regex
+  const fullPostcodeRegex = /[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}/gi;
+  // Partial postcode (outward code) regex - matches SE18, E14, NW1, etc.
+  const partialPostcodeRegex = /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b/gi;
 
   // Identify different sections of the page
   const footerContent = (html.match(/<footer[^>]*>([\s\S]*?)<\/footer>/i) || ['', ''])[1];
@@ -229,11 +345,21 @@ function extractAddressesWithContext(html: string): ExtractedAddress[] {
                       (html.match(/<article[^>]*>([\s\S]*?)<\/article>/i) || ['', ''])[1] ||
                       (html.match(/<div[^>]*class=["'][^"']*(?:property|listing|detail)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) || ['', ''])[1];
 
-  // Find all postcodes
-  const cleanText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  const matches = cleanText.matchAll(new RegExp(`(.{0,200})(${postcodeRegex.source})(.{0,100})`, 'gi'));
+  // Get H1 and title for high-priority extraction
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const title = titleMatch ? titleMatch[1] : '';
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  
+  // Look for "MARKETED BY" or similar agent sections
+  const marketedByMatch = html.match(/(?:marketed\s+by|listed\s+by|agent|estate\s+agent)[^<]*<[^>]*>([^<]*(?:<[^>]*>[^<]*)*?(?:[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}))/gi);
+  const agentSectionContent = marketedByMatch ? marketedByMatch.join(' ') : '';
 
-  for (const match of matches) {
+  // Find all FULL postcodes first
+  const cleanText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const fullMatches = cleanText.matchAll(new RegExp(`(.{0,200})(${fullPostcodeRegex.source})(.{0,100})`, 'gi'));
+
+  for (const match of fullMatches) {
     const beforeContext = match[1].trim();
     const postcode = match[2].toUpperCase().replace(/\s+/g, ' ');
     const afterContext = match[3].trim();
@@ -242,110 +368,79 @@ function extractAddressesWithContext(html: string): ExtractedAddress[] {
 
     // Determine where in the HTML this address appears
     let htmlLocation = 'BODY';
-    if (footerContent.toLowerCase().includes(postcode.toLowerCase())) {
+    const postcodeNormalized = postcode.toLowerCase();
+    
+    if (title.toLowerCase().includes(postcodeNormalized) || h1.toLowerCase().includes(postcodeNormalized)) {
+      htmlLocation = 'TITLE_OR_H1';
+    } else if (agentSectionContent.toLowerCase().includes(postcodeNormalized)) {
+      htmlLocation = 'AGENT_SECTION';
+    } else if (footerContent.toLowerCase().includes(postcodeNormalized)) {
       htmlLocation = 'FOOTER';
-    } else if (headerContent.toLowerCase().includes(postcode.toLowerCase())) {
+    } else if (headerContent.toLowerCase().includes(postcodeNormalized)) {
       htmlLocation = 'HEADER';
-    } else if (navContent.toLowerCase().includes(postcode.toLowerCase())) {
+    } else if (navContent.toLowerCase().includes(postcodeNormalized)) {
       htmlLocation = 'NAVIGATION';
-    } else if (sidebarContent.toLowerCase().includes(postcode.toLowerCase())) {
+    } else if (sidebarContent.toLowerCase().includes(postcodeNormalized)) {
       htmlLocation = 'SIDEBAR';
-    } else if (mainContent.toLowerCase().includes(postcode.toLowerCase())) {
+    } else if (mainContent.toLowerCase().includes(postcodeNormalized)) {
       htmlLocation = 'MAIN_CONTENT';
     }
 
+    // Extract a cleaner full address from context
+    const addressMatch = fullContext.match(/(\d+[^,]*(?:Street|St|Road|Rd|Lane|Ln|Avenue|Ave|Way|Close|Court|Ct|Place|Pl|Gardens|Gdns|Square|Sq|Terrace|Mews|Walk|Row|Crescent|Cres|Drive|Dr|Grove|Park|Hill)[^,]*(?:,\s*[^,]+)*,?\s*[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})/i);
+    const fullAddress = addressMatch ? addressMatch[1].trim() : fullContext.substring(0, 150);
+
     // Score and classify the address
-    let source: ExtractedAddress['source'] = 'UNKNOWN';
-    let confidence = 50;
-
-    // Strong property indicators
-    const propertyIndicators = [
-      'property', 'flat', 'apartment', 'studio', 'bedroom', 'bed', 'bath',
-      'to let', 'for rent', 'available', 'pcm', 'pw', 'per month', 'per week',
-      'tenancy', 'tenant', 'move in', 'unfurnished', 'furnished',
-      'living room', 'kitchen', 'balcony', 'terrace', 'parking'
-    ];
-
-    // Strong agent/office indicators
-    const agentIndicators = [
-      'office', 'branch', 'contact us', 'visit us', 'call us', 'speak to',
-      'our address', 'find us', 'opening hours', 'open monday', 'sales office',
-      'lettings office', 'viewing office', 'show flat', 'showroom'
-    ];
-
-    // Developer/company indicators
-    const developerIndicators = [
-      'head office', 'headquarters', 'registered office', 'company registration',
-      'ltd', 'limited', 'plc', 'holdings', 'group', 'developments',
-      'developer', 'management company', 'managing agent'
-    ];
-
-    // Footer/contact section indicators
-    const footerIndicators = [
-      'copyright', '©', 'all rights reserved', 'terms', 'privacy',
-      'cookie', 'social media', 'follow us', 'newsletter'
-    ];
-
-    // Calculate scores
-    let propertyScore = 0;
-    let agentScore = 0;
-    let developerScore = 0;
-    let footerScore = 0;
-
-    for (const indicator of propertyIndicators) {
-      if (lowerContext.includes(indicator)) propertyScore += 15;
-    }
-    for (const indicator of agentIndicators) {
-      if (lowerContext.includes(indicator)) agentScore += 20;
-    }
-    for (const indicator of developerIndicators) {
-      if (lowerContext.includes(indicator)) developerScore += 20;
-    }
-    for (const indicator of footerIndicators) {
-      if (lowerContext.includes(indicator)) footerScore += 15;
-    }
-
-    // HTML location significantly affects scoring
-    if (htmlLocation === 'FOOTER') {
-      footerScore += 40;
-      propertyScore -= 30;
-    } else if (htmlLocation === 'MAIN_CONTENT') {
-      propertyScore += 30;
-    } else if (htmlLocation === 'SIDEBAR' || htmlLocation === 'NAVIGATION') {
-      agentScore += 20;
-      propertyScore -= 10;
-    }
-
-    // Determine source based on highest score
-    const maxScore = Math.max(propertyScore, agentScore, developerScore, footerScore);
-    if (maxScore === 0 || propertyScore === maxScore) {
-      source = 'PROPERTY';
-      confidence = Math.min(95, 50 + propertyScore);
-    } else if (agentScore === maxScore) {
-      source = 'AGENT_OFFICE';
-      confidence = Math.min(95, 50 + agentScore);
-    } else if (developerScore === maxScore) {
-      source = 'DEVELOPER';
-      confidence = Math.min(95, 50 + developerScore);
-    } else {
-      source = 'FOOTER';
-      confidence = Math.min(95, 50 + footerScore);
-    }
+    const { source, confidence } = classifyAddress(lowerContext, htmlLocation, false);
 
     addresses.push({
       postcode,
+      fullAddress,
       fullContext,
       source,
       confidence,
-      htmlLocation
+      htmlLocation,
+      isFromTitle: htmlLocation === 'TITLE_OR_H1'
     });
+  }
+
+  // Now check if the H1/title/body has a postcode that we should prioritize
+  const primaryAddress = extractPrimaryPropertyAddress(html);
+  if (primaryAddress && primaryAddress.postcode) {
+    // Check if this postcode is already in our list (as full postcode)
+    const existingMatch = addresses.find(a => 
+      a.postcode.startsWith(primaryAddress.postcode) || 
+      primaryAddress.postcode.startsWith(a.postcode.split(' ')[0])
+    );
+    
+    if (!existingMatch) {
+      // This is a postcode from title/H1/body that we should add with HIGH priority
+      const confidence = primaryAddress.source === 'title' ? 95 : 
+                        primaryAddress.source === 'body_with_context' ? 85 : 75;
+      addresses.push({
+        postcode: primaryAddress.postcode,
+        fullAddress: primaryAddress.address,
+        fullContext: `From ${primaryAddress.source}: ${primaryAddress.address}`,
+        source: 'PROPERTY',
+        confidence,
+        htmlLocation: primaryAddress.source === 'title' ? 'TITLE_OR_H1' : 'MAIN_CONTENT',
+        isFromTitle: primaryAddress.source === 'title'
+      });
+    } else if (existingMatch && !existingMatch.isFromTitle && primaryAddress.source === 'title') {
+      // Update existing match to mark it as from title
+      existingMatch.isFromTitle = true;
+      existingMatch.confidence = Math.max(existingMatch.confidence, 95);
+      existingMatch.source = 'PROPERTY';
+    }
   }
 
   // Deduplicate by postcode, keeping the one with highest property confidence
   const uniqueAddresses = new Map<string, ExtractedAddress>();
   for (const addr of addresses) {
     const existing = uniqueAddresses.get(addr.postcode);
-    if (!existing || (addr.source === 'PROPERTY' && existing.source !== 'PROPERTY') ||
+    if (!existing || 
+        (addr.isFromTitle && !existing.isFromTitle) ||
+        (addr.source === 'PROPERTY' && existing.source !== 'PROPERTY') ||
         (addr.source === 'PROPERTY' && existing.source === 'PROPERTY' && addr.confidence > existing.confidence)) {
       uniqueAddresses.set(addr.postcode, addr);
     }
@@ -354,17 +449,124 @@ function extractAddressesWithContext(html: string): ExtractedAddress[] {
   return Array.from(uniqueAddresses.values());
 }
 
+// Classify an address based on context and HTML location
+function classifyAddress(lowerContext: string, htmlLocation: string, isFromTitle: boolean): { source: ExtractedAddress['source']; confidence: number } {
+  // If it's from the title/H1, it's almost certainly the property address
+  if (isFromTitle || htmlLocation === 'TITLE_OR_H1') {
+    return { source: 'PROPERTY', confidence: 95 };
+  }
+  
+  // If it's in the "MARKETED BY" section, it's definitely the agent
+  if (htmlLocation === 'AGENT_SECTION') {
+    return { source: 'AGENT_OFFICE', confidence: 95 };
+  }
+
+  // Strong property indicators
+  const propertyIndicators = [
+    'property', 'flat', 'apartment', 'studio', 'bedroom', 'bed', 'bath',
+    'to let', 'for rent', 'available', 'pcm', 'pw', 'per month', 'per week',
+    'tenancy', 'tenant', 'move in', 'unfurnished', 'furnished',
+    'living room', 'kitchen', 'balcony', 'terrace', 'parking'
+  ];
+
+  // Strong agent/office indicators - these are VERY strong signals
+  const agentIndicators = [
+    'marketed by', 'listed by', 'more properties from this agent',
+    'office', 'branch', 'contact us', 'visit us', 'call us', 'speak to',
+    'our address', 'find us', 'opening hours', 'open monday', 'sales office',
+    'lettings office', 'viewing office', 'show flat', 'showroom', 
+    'call agent', 'request details', 'email agent'
+  ];
+
+  // Developer/company indicators
+  const developerIndicators = [
+    'head office', 'headquarters', 'registered office', 'company registration',
+    'ltd', 'limited', 'plc', 'holdings', 'group', 'developments',
+    'developer', 'management company', 'managing agent'
+  ];
+
+  // Footer/contact section indicators
+  const footerIndicators = [
+    'copyright', '©', 'all rights reserved', 'terms', 'privacy',
+    'cookie', 'social media', 'follow us', 'newsletter'
+  ];
+
+  // Calculate scores
+  let propertyScore = 0;
+  let agentScore = 0;
+  let developerScore = 0;
+  let footerScore = 0;
+
+  for (const indicator of propertyIndicators) {
+    if (lowerContext.includes(indicator)) propertyScore += 15;
+  }
+  for (const indicator of agentIndicators) {
+    if (lowerContext.includes(indicator)) agentScore += 25; // Higher weight for agent indicators
+  }
+  for (const indicator of developerIndicators) {
+    if (lowerContext.includes(indicator)) developerScore += 20;
+  }
+  for (const indicator of footerIndicators) {
+    if (lowerContext.includes(indicator)) footerScore += 15;
+  }
+
+  // HTML location significantly affects scoring
+  if (htmlLocation === 'FOOTER') {
+    footerScore += 50;
+    propertyScore -= 40;
+  } else if (htmlLocation === 'MAIN_CONTENT') {
+    propertyScore += 30;
+  } else if (htmlLocation === 'SIDEBAR' || htmlLocation === 'NAVIGATION') {
+    agentScore += 30;
+    propertyScore -= 20;
+  }
+
+  // Determine source based on highest score
+  const maxScore = Math.max(propertyScore, agentScore, developerScore, footerScore);
+  let source: ExtractedAddress['source'] = 'UNKNOWN';
+  let confidence = 50;
+
+  if (agentScore === maxScore && agentScore > 0) {
+    source = 'AGENT_OFFICE';
+    confidence = Math.min(95, 50 + agentScore);
+  } else if (developerScore === maxScore && developerScore > 0) {
+    source = 'DEVELOPER';
+    confidence = Math.min(95, 50 + developerScore);
+  } else if (footerScore === maxScore && footerScore > 0) {
+    source = 'FOOTER';
+    confidence = Math.min(95, 50 + footerScore);
+  } else if (maxScore === 0 || propertyScore === maxScore) {
+    source = 'PROPERTY';
+    confidence = Math.min(95, 50 + propertyScore);
+  }
+
+  return { source, confidence };
+}
+
 // Clean and condense HTML for AI parsing
 function prepareHtmlForAI(html: string, url: string): string {
   let condensed = '';
 
+  // MOST IMPORTANT: Extract primary property address from title/H1/body
+  const primaryAddress = extractPrimaryPropertyAddress(html);
+  if (primaryAddress) {
+    const sourceDesc = primaryAddress.source === 'title' ? 'page title/H1' :
+                       primaryAddress.source === 'body_with_context' ? 'page content (near location keywords)' :
+                       'page content';
+    condensed += `## ⭐ PRIMARY PROPERTY ADDRESS (from ${sourceDesc} - HIGHEST PRIORITY)\n`;
+    condensed += `Address: ${primaryAddress.address}\n`;
+    condensed += `Postcode: ${primaryAddress.postcode || 'not found - use area name'}\n`;
+    condensed += `Source: ${primaryAddress.source}\n`;
+    condensed += `NOTE: This is the property/development location. Use this address, NOT any agent or company address.\n\n`;
+  }
+
   // Get title - often contains property address
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (titleMatch) condensed += `## PAGE TITLE (often contains property location)\n${titleMatch[1].trim()}\n\n`;
+  if (titleMatch) condensed += `## PAGE TITLE\n${titleMatch[1].trim()}\n\n`;
 
   // Get meta description - often has property summary
   const descMatch = html.match(/name=["']description["'][^>]*content=["']([^"']+)["']/i);
-  if (descMatch) condensed += `## META DESCRIPTION (property summary)\n${descMatch[1]}\n\n`;
+  if (descMatch) condensed += `## META DESCRIPTION\n${descMatch[1]}\n\n`;
 
   // Get all headings H1-H3 to understand page structure
   const headings: string[] = [];
@@ -372,7 +574,7 @@ function prepareHtmlForAI(html: string, url: string): string {
   if (h1Match) {
     for (const h of h1Match) {
       const text = h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      if (text) headings.push(`[H1] ${text}`);
+      if (text) headings.push(`[H1 - PROPERTY ADDRESS] ${text}`);
     }
   }
   const h2Matches = html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi);
@@ -381,7 +583,7 @@ function prepareHtmlForAI(html: string, url: string): string {
     if (text && text.length < 200) headings.push(`[H2] ${text}`);
   }
   if (headings.length > 0) {
-    condensed += `## PAGE HEADINGS (H1 usually contains property title/address)\n${headings.slice(0, 10).join('\n')}\n\n`;
+    condensed += `## PAGE HEADINGS\n${headings.slice(0, 10).join('\n')}\n\n`;
   }
 
   // Get all structured data with type labels
@@ -494,20 +696,63 @@ function validateAndCorrectAddress(
   extractedAddresses: ExtractedAddress[], 
   html: string
 ): any {
+  // First, check if we have a high-confidence address from title/H1
+  const titleAddress = extractedAddresses.find(a => a.isFromTitle && a.source === 'PROPERTY');
+  
+  if (titleAddress) {
+    // We have a reliable address from the page title - this should be used
+    const aiPostcode = aiResult.address?.match(/[A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?/i)?.[0]?.toUpperCase() || '';
+    const titlePostcode = titleAddress.postcode.toUpperCase();
+    
+    // Check if AI's address matches the title address
+    const aiMatchesTitle = aiPostcode && (
+      aiPostcode.startsWith(titlePostcode) || 
+      titlePostcode.startsWith(aiPostcode.split(' ')[0])
+    );
+    
+    if (!aiMatchesTitle) {
+      console.log(`Address correction: AI picked "${aiPostcode}" but title shows "${titlePostcode}"`);
+      
+      // Use the title address instead
+      aiResult.address = titleAddress.fullAddress;
+      aiResult.addressConfidence = 'high';
+      aiResult.addressReasoning = 'Address from page title/H1 heading - the most reliable source';
+      aiResult.originalAddress = aiResult.address !== titleAddress.fullAddress ? `AI suggested: ${aiPostcode}` : undefined;
+      
+      return aiResult;
+    }
+  }
+
   if (!aiResult.address || extractedAddresses.length === 0) {
+    // If no AI address, try to use title address
+    if (titleAddress) {
+      aiResult.address = titleAddress.fullAddress;
+      aiResult.addressConfidence = 'high';
+      aiResult.addressReasoning = 'Address extracted from page title/H1';
+    }
     return aiResult;
   }
 
-  // Extract postcode from AI's address
-  const aiPostcodeMatch = aiResult.address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}/i);
+  // Extract postcode from AI's address (full or partial)
+  const aiPostcodeMatch = aiResult.address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?/i);
   if (!aiPostcodeMatch) {
     // AI didn't return a valid UK postcode, try to use the best pre-classified one
-    const propertyAddresses = extractedAddresses.filter(a => a.source === 'PROPERTY');
+    const propertyAddresses = extractedAddresses
+      .filter(a => a.source === 'PROPERTY')
+      .sort((a, b) => {
+        // Prioritize title addresses, then by confidence
+        if (a.isFromTitle && !b.isFromTitle) return -1;
+        if (!a.isFromTitle && b.isFromTitle) return 1;
+        return b.confidence - a.confidence;
+      });
+      
     if (propertyAddresses.length > 0) {
-      const best = propertyAddresses.sort((a, b) => b.confidence - a.confidence)[0];
-      aiResult.address = best.fullContext;
-      aiResult.addressConfidence = 'medium';
-      aiResult.addressReasoning = 'Address corrected: AI response missing valid postcode, using pre-classified property address';
+      const best = propertyAddresses[0];
+      aiResult.address = best.fullAddress;
+      aiResult.addressConfidence = best.isFromTitle ? 'high' : 'medium';
+      aiResult.addressReasoning = best.isFromTitle 
+        ? 'Address from page title - most reliable source'
+        : 'Address corrected: AI response missing valid postcode, using pre-classified property address';
       console.log('Address correction: Missing postcode, using pre-classified address');
     }
     return aiResult;
@@ -516,43 +761,56 @@ function validateAndCorrectAddress(
   const aiPostcode = aiPostcodeMatch[0].toUpperCase().replace(/\s+/g, ' ');
   
   // Find this postcode in our pre-classified addresses
-  const matchingAddress = extractedAddresses.find(
-    a => a.postcode.replace(/\s+/g, ' ') === aiPostcode.replace(/\s+/g, ' ')
-  );
+  const matchingAddress = extractedAddresses.find(a => {
+    const normalizedAI = aiPostcode.replace(/\s+/g, '');
+    const normalizedExtracted = a.postcode.replace(/\s+/g, '');
+    return normalizedAI === normalizedExtracted || 
+           normalizedAI.startsWith(normalizedExtracted) || 
+           normalizedExtracted.startsWith(normalizedAI);
+  });
 
   if (!matchingAddress) {
     // Postcode not in our extracted list - could be valid but not caught by our regex
     return aiResult;
   }
 
-  // Check if AI picked a non-property address
+  // Check if AI picked a non-property address (agent, footer, etc.)
   if (matchingAddress.source !== 'PROPERTY') {
-    console.log(`Address warning: AI picked ${matchingAddress.source} address (${aiPostcode}), checking for alternatives...`);
+    console.log(`Address warning: AI picked ${matchingAddress.source} address (${aiPostcode}) from ${matchingAddress.htmlLocation}`);
     
     // Find best property address as alternative
-    const propertyAddresses = extractedAddresses.filter(a => a.source === 'PROPERTY');
+    const propertyAddresses = extractedAddresses
+      .filter(a => a.source === 'PROPERTY')
+      .sort((a, b) => {
+        if (a.isFromTitle && !b.isFromTitle) return -1;
+        if (!a.isFromTitle && b.isFromTitle) return 1;
+        return b.confidence - a.confidence;
+      });
     
     if (propertyAddresses.length > 0) {
-      const best = propertyAddresses.sort((a, b) => b.confidence - a.confidence)[0];
+      const best = propertyAddresses[0];
       
-      // If the best property address has reasonable confidence, use it instead
-      if (best.confidence >= 60) {
+      // If we have a title address or high confidence property address, use it
+      if (best.isFromTitle || best.confidence >= 60) {
         console.log(`Address correction: Replacing ${matchingAddress.source} address with PROPERTY address (${best.postcode})`);
         
-        // Try to construct a better address from the context
-        aiResult.address = best.fullContext;
-        aiResult.addressConfidence = 'medium';
-        aiResult.addressReasoning = `Address corrected: Original was ${matchingAddress.source.toLowerCase()} address, replaced with property address from main content`;
+        aiResult.address = best.fullAddress;
+        aiResult.addressConfidence = best.isFromTitle ? 'high' : 'medium';
+        aiResult.addressReasoning = best.isFromTitle
+          ? 'Address from page title/H1 - agent address was incorrectly selected'
+          : `Address corrected: Original was ${matchingAddress.source.toLowerCase()} address`;
         aiResult.originalAddress = `${aiPostcode} (was: ${matchingAddress.source})`;
       }
-    } else if (matchingAddress.htmlLocation === 'FOOTER') {
-      // No clear property address, but AI picked a footer address - warn about low confidence
+    } else if (matchingAddress.htmlLocation === 'FOOTER' || matchingAddress.htmlLocation === 'AGENT_SECTION') {
+      // No clear property address, but AI picked a footer/agent address - warn about low confidence
       aiResult.addressConfidence = 'low';
-      aiResult.addressReasoning = (aiResult.addressReasoning || '') + ' (Warning: Address found in footer, may be agent address)';
+      aiResult.addressReasoning = (aiResult.addressReasoning || '') + ` (Warning: Address found in ${matchingAddress.htmlLocation}, likely agent address)`;
     }
   } else {
     // AI correctly picked a property address - increase confidence
-    if (matchingAddress.confidence >= 80 && aiResult.addressConfidence !== 'high') {
+    if (matchingAddress.isFromTitle) {
+      aiResult.addressConfidence = 'high';
+    } else if (matchingAddress.confidence >= 80 && aiResult.addressConfidence !== 'high') {
       aiResult.addressConfidence = 'high';
     }
   }
@@ -598,91 +856,93 @@ app.post('/api/fetch-property', async (req, res) => {
       messages: [
         {
           role: 'user',
-          content: `You are an expert at analyzing UK property rental listing pages. Your task is to extract the PROPERTY ADDRESS - the actual location where the rental unit is physically located.
+          content: `You are an expert at analyzing UK property rental listing pages. Extract the PROPERTY ADDRESS - where the rental unit is located.
 
-## CRITICAL PROBLEM TO AVOID
+## 🚨 THE #1 RULE: USE THE ADDRESS FROM THE PAGE TITLE/H1
 
-Many property pages contain MULTIPLE addresses:
-1. **PROPERTY ADDRESS** (✓ WHAT WE WANT) - where the flat/house is located
-2. **AGENT OFFICE ADDRESS** (✗ WRONG) - the estate agent's office address
-3. **DEVELOPER HQ ADDRESS** (✗ WRONG) - the building company's headquarters
-4. **FOOTER/CONTACT ADDRESS** (✗ WRONG) - company registration or contact address
+On property listing websites (Rightmove, Zoopla, OnTheMarket, etc.), the H1 heading and page title ALWAYS contain the PROPERTY ADDRESS, not the agent's address.
 
-**You MUST distinguish between these and ONLY return the property address.**
+**ALWAYS use the address shown in the H1 heading or page title as your primary source.**
 
-## STEP-BY-STEP ANALYSIS PROCESS
+Examples:
+- H1: "Barlow Drive, London, SE18" → Property is at Barlow Drive, SE18
+- Title: "3 bedroom house for rent in Barlow Drive, London, SE18" → Property is at Barlow Drive, SE18
+- H1: "2 Bed Apartment, Canary Wharf, E14" → Property is at Canary Wharf, E14
 
-Follow these steps in order:
+## ⚠️ AGENT ADDRESSES TO IGNORE
 
-### Step 1: Identify the PROPERTY from the page title/H1
-The H1 heading and page title usually contain the property description like "2 Bed Apartment in Canary Wharf" or "Studio Flat, E14". This tells you WHAT the property is and often hints at the location.
+The page will also contain the estate agent's office address. This is NEVER the property address.
 
-### Step 2: Find ALL postcodes/addresses on the page
-List every UK postcode you see and note WHERE on the page it appears (main content, footer, sidebar, contact section).
+Agent addresses appear in:
+- "MARKETED BY" sections with agent name + address
+- "About [Agent Name]" sections  
+- Sidebars with "Call agent", "Contact us"
+- Footers with copyright info
 
-### Step 3: Classify each address
-For each address, determine if it's:
-- PROPERTY: Appears in property title, main content, near bedroom/bathroom counts, rental price
-- AGENT: Near "contact us", "our office", "visit our branch", in footer, with phone/email
-- DEVELOPER: Near "about us", "head office", company registration, "Ltd", "Limited"
+Example of what to IGNORE:
+- "MARKETED BY Village Estates, 91 Main Road, Sidcup, DA14 6ND" → This is the AGENT office, NOT the property!
 
-### Step 4: Select the PROPERTY address
-Choose the address that:
-- Appears in the MAIN CONTENT area (not footer/sidebar)
-- Is associated with property features (bedrooms, rent price, available date)
-- Matches the location hinted at in the page title/H1
-- Is NOT marked as an office, branch, or company address
+## DECISION PROCESS
 
-## COMMON MISTAKES TO AVOID
+1. **FIRST**: Look at the "PRIMARY PROPERTY ADDRESS" section I've provided - this is extracted from the page title/H1 and is almost always correct.
 
-❌ DO NOT pick an address from the footer - that's usually the agent's office
-❌ DO NOT pick an address near "Contact us" or "Visit our branch"  
-❌ DO NOT pick an address that includes "Floor" + company name (office address)
-❌ DO NOT pick an address near "Registered office" or "Head office"
-❌ DO NOT confuse "Sales office" or "Marketing suite" with the property address
+2. **VERIFY**: The primary address should match the postcode area mentioned in the main property heading.
+
+3. **CROSS-CHECK**: Make sure you're NOT using an address from:
+   - "MARKETED BY" sections
+   - Agent contact information
+   - Footer content
+   - "About the agent" sections
 
 ## EXAMPLES
 
-### Example 1: CORRECT
-Page title: "2 Bed Apartment, Royal Docks, E16"
-Main content mentions: "This stunning flat at The Shoreline, Royal Docks, London E16 1BQ"
-Footer contains: "ABC Lettings, 45 Commercial Road, London E1 1LH"
-→ CORRECT: Use E16 1BQ (property), NOT E1 1LH (agent office)
+### Example: Rightmove listing
+H1: "Barlow Drive, London, SE18"  
+Sidebar shows: "MARKETED BY Village Estates, 91 Main Road, Sidcup, DA14 6ND"
 
-### Example 2: CORRECT  
-H1: "Luxury Studio in Wembley Park"
-Property description: "Located at Quintain's development, Olympic Way, HA9 0GQ"
-Sidebar: "Contact our Wembley office: 123 High Road, Wembley HA0 2AA"
-→ CORRECT: Use HA9 0GQ (property), NOT HA0 2AA (agent office)
+✅ CORRECT: Use "Barlow Drive, London, SE18" (from H1)
+❌ WRONG: "91 Main Road, Sidcup, DA14 6ND" (agent's office!)
 
-### Example 3: INCORRECT (what to avoid)
-Page shows a property in Canary Wharf but you pick "Floor 2, One Canada Square, E14 5AB" which is clearly an office address, not a residential flat address.
+### Example: Zoopla listing  
+Title: "2 bed flat to rent, The Shoreline, E16 1BQ"
+Footer: "Agent HQ: 123 Business Park, E1 1AA"
 
-## UK POSTCODE REFERENCE
-Format: [Area][District] [Sector][Unit]
-Examples: E14 9GE, SW1A 1AA, N1 9GU, SE1 7PB
+✅ CORRECT: Use "The Shoreline, E16 1BQ" (from title)
+❌ WRONG: "123 Business Park, E1 1AA" (agent's HQ!)
 
 ## RESPONSE FORMAT
 
-Think through your analysis, then return a JSON object:
+Return a JSON object:
 
 {
-  "analysisSteps": {
-    "propertyFromTitle": "What the page title/H1 tells us about the property and its likely location",
-    "allAddressesFound": ["List each postcode with its context"],
-    "classification": "For each address, explain if it's property/agent/developer",
-    "selectedAddress": "Which address you chose and why"
-  },
-  "name": "property title - e.g., '2 Bed Apartment, The Shoreline'",
-  "address": "PROPERTY address only - the full address where a tenant would live",
+  "name": "property title from H1 - e.g., '3 bedroom house, Barlow Drive'",
+  "address": "PROPERTY address from title/H1 - e.g., 'Barlow Drive, London, SE18'",
   "addressConfidence": "high/medium/low",
-  "addressReasoning": "One sentence explaining why this is the property address",
-  "thumbnail": "best property image URL (full URL starting with http)",
+  "addressReasoning": "Brief explanation - e.g., 'Address from page H1 heading'",
+  "thumbnail": "best property image URL",
   "isBTR": true/false
 }
 
-## BTR (Build to Rent) Indicators
-Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, "Build to Rent", "BTR", professionally managed developments with concierge/gym/amenities.
+Notes:
+- For partial postcodes (like SE18 without full code), that's fine - use what's shown in the title
+- If the title only shows an area name, use that with any postcode you can find in the main content
+- NEVER use an address from a "MARKETED BY" or "About the agent" section
+
+## BTR (Build to Rent) / Development Sites
+
+BTR sites (like Get Living, Quintain, AWOL) often show:
+- Development NAME in the title (e.g., "Elephant Central", "North Kensington Gate")
+- Street address with postcode somewhere in the page body
+- Use the development name + postcode as the address
+
+Examples:
+- Title: "North Kensington - AWOL", Body mentions "Grand Union Canal, NW10 6QQ"
+  → Address: "North Kensington Gate, Grand Union Canal, NW10 6QQ"
+- Title: "Apartments to Rent at Elephant Central", Meta says "SE1"
+  → Address: "Elephant Central, SE1"
+
+## BTR Indicators
+Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, Simple Life London, AWOL, Way of Life, "Build to Rent", "BTR", professionally managed developments with concierge/gym/amenities.
 
 ---
 
@@ -907,6 +1167,218 @@ app.delete('/api/pending-properties', (req, res) => {
   extensionProperties.length = 0;
   res.json({ success: true });
 });
+
+// NEW: Parse property from extracted page content (bypasses anti-scraping)
+// This is called when the Chrome extension extracts content directly from the DOM
+app.post('/api/parse-property-content', async (req, res) => {
+  try {
+    const { pageContent } = req.body;
+
+    if (!pageContent) {
+      return res.status(400).json({ error: 'Page content is required' });
+    }
+
+    const claudeApiKey = process.env.ANTHROPIC_API_KEY;
+    
+    // Prepare content for Claude
+    const preparedContent = prepareExtractedContentForAI(pageContent);
+    
+    // If no API key, do basic extraction from the provided content
+    if (!claudeApiKey) {
+      const basicResult = extractBasicFromContent(pageContent);
+      return res.json(basicResult);
+    }
+
+    // Use Claude to parse the content
+    const anthropic = new Anthropic({ apiKey: claudeApiKey });
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [
+        {
+          role: 'user',
+          content: `You are an expert at analyzing UK property rental listings. Extract property details from this page content.
+
+## YOUR TASK
+
+Extract the PROPERTY ADDRESS (where the rental is located), NOT the estate agent's office address.
+
+## KEY RULES
+
+1. **H1 HEADINGS contain the PROPERTY ADDRESS** - This is the most reliable source
+2. **SIDEBAR and FOOTER contain AGENT addresses** - IGNORE these for the property location
+3. Look for UK postcodes (e.g., SE18, E14 5AB, NW1 4PN)
+
+## EXAMPLES
+
+H1: "Baldwin Lane, London SE3" → Property address is "Baldwin Lane, London SE3"
+SIDEBAR: "Agent: 91 Main Road, Sidcup, DA14" → IGNORE this - it's the agent office
+
+## RESPONSE FORMAT
+
+Return ONLY a JSON object:
+
+{
+  "name": "descriptive name, e.g., '3 bed terraced house, Baldwin Lane'",
+  "address": "the PROPERTY address with postcode if available",
+  "price": "rent amount if found, e.g., '£2,500 pcm'",
+  "bedrooms": number or null,
+  "bathrooms": number or null,
+  "propertyType": "flat/house/studio/apartment/etc.",
+  "isBTR": true if this is a Build-to-Rent development (Quintain, Greystar, Get Living, etc.),
+  "thumbnail": "best image URL from the images list"
+}
+
+## BTR Indicators
+Quintain, Greystar, Get Living, Essential Living, Fizzy Living, Grainger, Tipi, Uncle, APO, Canvas, Platform_, Lendlease, Related Argent, Vertus, Moda Living, "Build to Rent", "BTR".
+
+---
+
+PAGE CONTENT:
+
+${preparedContent}`,
+        },
+      ],
+    });
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        // Ensure we have images from the original content
+        if (!parsed.thumbnail && pageContent.images && pageContent.images.length > 0) {
+          parsed.thumbnail = pageContent.images[0];
+        }
+        parsed.images = pageContent.images || [];
+        
+        return res.json(parsed);
+      } catch (e) {
+        console.error('Failed to parse AI response:', e);
+      }
+    }
+
+    // Fallback to basic extraction
+    const basicResult = extractBasicFromContent(pageContent);
+    return res.json(basicResult);
+
+  } catch (error) {
+    console.error('Error parsing property content:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Prepare extracted content for AI parsing
+function prepareExtractedContentForAI(content: any): string {
+  let text = '';
+  
+  // URL for context
+  text += `URL: ${content.url}\n\n`;
+  
+  // Page title - very important
+  text += `## PAGE TITLE\n${content.pageTitle}\n\n`;
+  
+  // H1 headings - usually contain the property address
+  if (content.headings?.h1?.length > 0) {
+    text += `## H1 HEADINGS (PROPERTY ADDRESS is usually here)\n`;
+    text += content.headings.h1.join('\n');
+    text += '\n\n';
+  }
+  
+  // Meta description
+  if (content.metaTags?.description || content.metaTags?.['og:description']) {
+    text += `## DESCRIPTION\n${content.metaTags.description || content.metaTags['og:description']}\n\n`;
+  }
+  
+  // Property features
+  if (content.propertyFeatures?.length > 0) {
+    text += `## PROPERTY FEATURES\n${content.propertyFeatures.join(', ')}\n\n`;
+  }
+  
+  // Price info
+  if (content.priceInfo?.length > 0) {
+    text += `## PRICES FOUND\n${content.priceInfo.join(', ')}\n\n`;
+  }
+  
+  // Images
+  if (content.images?.length > 0) {
+    text += `## IMAGES\n${content.images.slice(0, 5).join('\n')}\n\n`;
+  }
+  
+  // Structured data (JSON-LD)
+  if (content.structuredData?.length > 0) {
+    text += `## STRUCTURED DATA\n${JSON.stringify(content.structuredData, null, 2)}\n\n`;
+  }
+  
+  // Main content
+  if (content.mainContent) {
+    text += `## MAIN CONTENT (property details are here)\n${content.mainContent.substring(0, 6000)}\n\n`;
+  }
+  
+  // Sidebar - mark as potential agent info
+  if (content.sidebarContent) {
+    text += `## SIDEBAR (often contains AGENT info - NOT the property address)\n${content.sidebarContent.substring(0, 1500)}\n\n`;
+  }
+  
+  // Footer - mark as company/agent info
+  if (content.footerContent) {
+    text += `## FOOTER (contains AGENT/COMPANY addresses - NOT the property)\n${content.footerContent.substring(0, 1000)}\n\n`;
+  }
+  
+  return text;
+}
+
+// Basic extraction from content without AI
+function extractBasicFromContent(content: any): any {
+  const result: any = {
+    name: '',
+    address: '',
+    thumbnail: content.images?.[0] || content.metaTags?.['og:image'] || '',
+    images: content.images || [],
+    isBTR: false,
+  };
+  
+  // Try to get name from H1 or page title
+  if (content.headings?.h1?.length > 0) {
+    result.name = content.headings.h1[0];
+  } else if (content.pageTitle) {
+    result.name = content.pageTitle.split('|')[0].split('-')[0].trim();
+  }
+  
+  // Try to extract address from H1 or title
+  const h1Text = content.headings?.h1?.join(' ') || '';
+  const titleText = content.pageTitle || '';
+  const combinedText = `${h1Text} ${titleText}`;
+  
+  // Look for UK postcode pattern
+  const postcodeMatch = combinedText.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
+  if (postcodeMatch) {
+    // Try to extract the full address around the postcode
+    const addressMatch = combinedText.match(/([^,|]+,?\s*(?:London|Greater London)?[^,|]*,?\s*[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
+    result.address = addressMatch ? addressMatch[1].trim() : postcodeMatch[0];
+  }
+  
+  // Check for BTR indicators
+  const allText = (content.allText || content.mainContent || '').toLowerCase();
+  const btrKeywords = [
+    'build to rent', 'build-to-rent', 'btr', 'quintain', 'greystar',
+    'get living', 'essential living', 'fizzy living', 'grainger', 'tipi',
+    'uncle', 'apo', 'canvas', 'platform_', 'lendlease', 'related argent',
+    'vertus', 'moda living'
+  ];
+  result.isBTR = btrKeywords.some(kw => allText.includes(kw));
+  
+  // Extract price
+  if (content.priceInfo?.length > 0) {
+    result.price = content.priceInfo[0];
+  }
+  
+  return result;
+}
 
 function extractBasicData(html: string, url: string): any {
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);

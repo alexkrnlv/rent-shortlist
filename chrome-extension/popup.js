@@ -306,19 +306,36 @@ async function handleAddProperty() {
       throw new Error(`Cannot connect to server at ${apiUrl}. Is the App URL correct?`);
     }
 
-    // Step 2: Fetch property details from the listing page
+    // Step 2: Extract content from page and parse with AI
+    // This bypasses anti-scraping measures by extracting directly from the DOM
     updateStep('step-fetch', 'active');
 
     try {
-      const fetchedData = await safeFetch(`${apiUrl}/api/fetch-property`, {
+      // First, extract comprehensive content from the page via content script
+      const pageContent = await chrome.tabs.sendMessage(currentTab.id, { action: 'getPageContent' });
+      
+      if (!pageContent) {
+        throw new Error('Could not extract page content');
+      }
+
+      // Send the extracted content to our server for AI parsing
+      const fetchedData = await safeFetch(`${apiUrl}/api/parse-property-content`, {
         method: 'POST',
-        body: JSON.stringify({ url: currentTab.url }),
+        body: JSON.stringify({ pageContent }),
       });
+      
       propertyData = { ...propertyData, ...fetchedData };
       updateStep('step-fetch', 'completed');
     } catch (error) {
-      updateStep('step-fetch', 'error');
-      throw new Error(`Failed to fetch property: ${error.message}`);
+      // If content extraction fails, fall back to basic page data
+      console.log('Content extraction failed, using basic data:', error.message);
+      if (pageData?.address) {
+        // We have basic data from the initial extraction, continue with that
+        updateStep('step-fetch', 'completed');
+      } else {
+        updateStep('step-fetch', 'error');
+        throw new Error(`Failed to extract property details: ${error.message}`);
+      }
     }
 
     // Step 3: Geocode the address

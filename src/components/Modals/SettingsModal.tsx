@@ -3,7 +3,8 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { MapPin } from 'lucide-react';
+import { useTutorialStore } from '../../store/useTutorialStore';
+import { MapPin, GraduationCap } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { settings, setCenterPoint } = useSettingsStore();
+  const { startTutorial, resetTutorial } = useTutorialStore();
 
   const [centerName, setCenterName] = useState(settings.centerPoint.name);
   const [centerLat, setCenterLat] = useState(settings.centerPoint.lat.toString());
@@ -95,6 +97,33 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               onChange={(e) => setCenterLng(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Tutorial Section */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <GraduationCap size={16} />
+            Help & Tutorial
+          </h3>
+          <button
+            onClick={() => {
+              resetTutorial();
+              startTutorial();
+              onClose();
+            }}
+            className="flex items-center gap-3 w-full px-4 py-3 text-left bg-gradient-to-r from-primary-50 to-blue-50 hover:from-primary-100 hover:to-blue-100 rounded-xl border border-primary-100 transition-all duration-200 group"
+          >
+            <span className="text-2xl">🎓</span>
+            <div className="flex-1">
+              <div className="font-medium text-gray-900 group-hover:text-primary-700 transition-colors">
+                Restart Tutorial
+              </div>
+              <div className="text-xs text-gray-500">
+                Take the guided tour again
+              </div>
+            </div>
+            <span className="text-gray-400 group-hover:text-primary-600 transition-colors">→</span>
+          </button>
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

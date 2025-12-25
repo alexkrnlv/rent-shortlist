@@ -7,44 +7,49 @@ import { TableView } from './components/Table/TableView';
 import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
-import { WelcomeModal } from './components/Modals/WelcomeModal';
+import { Tutorial } from './components/Tutorial';
 import { usePropertyStore } from './store/usePropertyStore';
+import { useTutorialStore } from './store/useTutorialStore';
 import { useExtensionSync } from './hooks/useExtensionSync';
 import { useUrlSession } from './hooks/useUrlSession';
-import { hasSeenWelcomeModal, hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
+import { hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
 
 function App() {
   // Sync with Chrome extension
   useExtensionSync();
   
   // Sync state with URL
-  const { sessionId, isLoading: isSessionLoading } = useUrlSession();
+  const { isLoading: isSessionLoading } = useUrlSession();
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { properties } = usePropertyStore();
+  const { hasCompleted, hasSkipped, startTutorial } = useTutorialStore();
 
   // Close mobile sidebar when view mode changes
   useEffect(() => {
     setIsMobileSidebarOpen(false);
   }, [viewMode]);
 
-  // Show welcome modal on first visit (not loaded from URL and not seen before)
+  // Show tutorial on first visit (not loaded from URL session and not seen before)
   useEffect(() => {
     // Wait for session loading to complete
     if (isSessionLoading) return;
     
-    // Show welcome modal if first visit
-    if (!hasSessionInUrl() && !hasSeenWelcomeModal()) {
-      setShowWelcomeModal(true);
+    // Start tutorial if first visit (hasn't completed or skipped)
+    if (!hasSessionInUrl() && !hasCompleted && !hasSkipped) {
+      // Small delay to let the app render first
+      const timer = setTimeout(() => {
+        startTutorial();
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [isSessionLoading]);
+  }, [isSessionLoading, hasCompleted, hasSkipped, startTutorial]);
 
   // Handle share button click
   const handleShare = async () => {
@@ -104,11 +109,8 @@ function App() {
         mode="import"
       />
 
-      <WelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
-        sessionId={sessionId}
-      />
+      {/* Interactive Onboarding Tutorial */}
+      <Tutorial />
 
       {/* Copied toast notification */}
       {showCopiedToast && (

@@ -47,11 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTab = tab;
 
-  // Check if this is a property listing site
-  const isPropertySite = isPropertyListingSite(tab.url);
-  
-  if (!isPropertySite) {
-    showError('This doesn\'t look like a property listing. Try on Zoopla, Rightmove, or similar sites.');
+  // Check for invalid URLs (browser internal pages)
+  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('about:')) {
+    showError('Cannot add this page. Navigate to a property listing website first.');
     return;
   }
 
@@ -98,21 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   elements.openAppBtnAlready.addEventListener('click', openApp);
   elements.openAppBtnError.addEventListener('click', openApp);
 });
-
-// Check if URL is from a property listing site
-function isPropertyListingSite(url) {
-  const propertySites = [
-    'rightmove.co.uk',
-    'zoopla.co.uk',
-    'onthemarket.com',
-    'openrent.com',
-    'spareroom.co.uk',
-    'gumtree.com',
-    'primelocation.com',
-    'home.co.uk',
-  ];
-  return propertySites.some(site => url.includes(site));
-}
 
 // Get site name from URL
 function getSiteName(url) {

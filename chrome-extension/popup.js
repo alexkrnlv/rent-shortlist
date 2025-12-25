@@ -291,6 +291,45 @@ function renderTags() {
   });
 }
 
+// Load available sessions from server
+async function loadSessions() {
+  try {
+    const apiUrl = getApiUrl();
+    if (!apiUrl) {
+      elements.sessionSelect.innerHTML = '<option value="">No app URL configured</option>';
+      return;
+    }
+
+    console.log('Loading sessions from:', apiUrl);
+    const sessions = await safeFetch(`${apiUrl}/api/user-sessions`);
+    console.log('Sessions loaded:', sessions);
+    
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      elements.sessionSelect.innerHTML = '<option value="">Current session (default)</option><option value="__new__">+ Create New Session</option>';
+      return;
+    }
+
+    // Get saved selected session ID
+    const stored = await chrome.storage.local.get(['selectedSessionId']);
+    const selectedSessionId = stored.selectedSessionId || '';
+
+    // Build options
+    let optionsHtml = '<option value="">Current session (default)</option>';
+    sessions.forEach((session, index) => {
+      const date = new Date(session.updatedAt);
+      const label = `Session ${index + 1} (${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`;
+      const selected = session.id === selectedSessionId ? ' selected' : '';
+      optionsHtml += `<option value="${session.id}"${selected}>${label}</option>`;
+    });
+    optionsHtml += '<option value="__new__">+ Create New Session</option>';
+    
+    elements.sessionSelect.innerHTML = optionsHtml;
+  } catch (e) {
+    console.error('Could not load sessions:', e);
+    elements.sessionSelect.innerHTML = '<option value="">Current session (default)</option><option value="__new__">+ Create New Session</option>';
+  }
+}
+
 // Main add handler - sends URL + page text to server
 // Server/App handles ALL parsing via Claude
 async function handleAdd() {

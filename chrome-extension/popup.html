@@ -399,14 +399,6 @@
 
     <!-- Add View -->
     <div id="add-view">
-      <!-- Session Selector -->
-      <div class="session-selector" id="session-selector">
-        <label>Add to Session</label>
-        <select id="session-select">
-          <option value="">Loading sessions...</option>
-        </select>
-      </div>
-
       <div class="property-card">
         <div class="thumbnail" id="thumbnail-container">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -440,6 +432,14 @@
       <button id="open-app-btn" class="btn btn-secondary">
         Open App →
       </button>
+
+      <!-- Session Selector - moved to bottom -->
+      <div class="session-selector" id="session-selector" style="margin-top: 16px;">
+        <label>Session</label>
+        <select id="session-select">
+          <option value="">Loading sessions...</option>
+        </select>
+      </div>
     </div>
 
     <!-- Success View -->

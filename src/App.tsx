@@ -68,13 +68,18 @@ function App() {
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: {} }), // Empty session
+        body: JSON.stringify({ 
+          data: {
+            properties: [],
+            settings: useSettingsStore.getState().settings,
+          }
+        }), // Empty session with settings
       });
       
       if (response.ok) {
         const { id } = await response.json();
-        // Navigate to new session URL
-        window.location.href = `/s/${id}`;
+        // Open in new tab
+        window.open(`/s/${id}`, '_blank');
       }
     } catch (error) {
       console.error('Failed to create new session:', error);
@@ -97,11 +102,12 @@ function App() {
             onNewSessionClick={handleNewSession}
             propertyCount={properties.length}
             viewMode={viewMode}
+            onViewModeChange={setViewMode}
             onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             isMobileSidebarOpen={isMobileSidebarOpen}
           />
         }
-        sidebar={<Sidebar viewMode={viewMode} onViewModeChange={setViewMode} onAddClick={() => setShowAddModal(true)} />}
+        sidebar={<Sidebar onAddClick={() => setShowAddModal(true)} />}
         map={<MapView />}
         table={<TableView />}
       />

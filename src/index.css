@@ -197,3 +197,143 @@ body {
 .view-transition {
   transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
+
+/* Tutorial Animations */
+@keyframes tutorialPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes tutorialBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes tutorialSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tutorialSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tutorialConfetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes tutorialSparkle {
+  0%, 100% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1) rotate(180deg);
+    opacity: 1;
+  }
+}
+
+.animate-tutorial-pulse {
+  animation: tutorialPulse 2s ease-in-out infinite;
+}
+
+.animate-tutorial-bounce {
+  animation: tutorialBounce 1s ease-in-out infinite;
+}
+
+.animate-tutorial-slide-in {
+  animation: tutorialSlideIn 0.4s ease-out forwards;
+}
+
+.animate-tutorial-slide-up {
+  animation: tutorialSlideUp 0.4s ease-out forwards;
+}
+
+.animate-tutorial-confetti {
+  animation: tutorialConfetti 2s ease-out forwards;
+}
+
+.animate-tutorial-sparkle {
+  animation: tutorialSparkle 1.5s ease-in-out infinite;
+}
+
+/* Tutorial step transitions */
+.tutorial-step-enter {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.tutorial-step-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.tutorial-step-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.tutorial-step-exit-active {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 200ms ease-in, transform 200ms ease-in;
+}
+
+/* Spotlight overlay for interactive tutorials */
+.tutorial-spotlight {
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  position: relative;
+  z-index: 9999;
+}
+
+.tutorial-spotlight::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  animation: tutorialPulse 2s ease-in-out infinite;
+}
+
+/* Progress bar animation */
+@keyframes progressGrow {
+  from {
+    width: 0;
+  }
+}
+
+.tutorial-progress-bar {
+  animation: progressGrow 0.3s ease-out;
+}

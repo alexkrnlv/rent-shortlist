@@ -159,10 +159,20 @@ function showThumbnail(src) {
   elements.thumbnailContainer.innerHTML = `<img src="${src}" alt="Property" onerror="this.parentElement.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\'><rect x=\\'3\\' y=\\'3\\' width=\\'18\\' height=\\'18\\' rx=\\'2\\' ry=\\'2\\'></rect><circle cx=\\'8.5\\' cy=\\'8.5\\' r=\\'1.5\\'></circle><polyline points=\\'21 15 16 10 5 21\\'></polyline></svg>'">`;
 }
 
-// Get API URL
+// Get API URL - extracts base URL even if user entered a session URL
 function getApiUrl() {
-  const appUrl = elements.appUrlInput.value.trim().replace(/\/$/, '');
+  let appUrl = elements.appUrlInput.value.trim().replace(/\/$/, '');
   if (!appUrl) return '';
+  
+  // Extract just the origin (protocol + host) to handle session URLs like /s/xyz
+  try {
+    const parsed = new URL(appUrl);
+    appUrl = parsed.origin; // e.g., https://rent-shortlist.onrender.com
+  } catch {
+    // If parsing fails, use as-is
+  }
+  
+  // Handle local development
   if (appUrl.includes('localhost:5173') || appUrl.includes('localhost:5174')) {
     return appUrl.replace(':5173', ':3001').replace(':5174', ':3001');
   }
@@ -310,9 +320,15 @@ function handleRetry() {
   `;
 }
 
-// Open the main app
+// Open the main app (use the URL as entered by user)
 function openApp() {
-  const appUrl = elements.appUrlInput.value.trim() || 'https://rent-shortlist.onrender.com';
+  let appUrl = elements.appUrlInput.value.trim() || 'https://rent-shortlist.onrender.com';
+  // Ensure it's a valid URL
+  try {
+    new URL(appUrl);
+  } catch {
+    appUrl = 'https://rent-shortlist.onrender.com';
+  }
   chrome.tabs.create({ url: appUrl });
 }
 

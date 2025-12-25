@@ -73,7 +73,7 @@ export function useExtensionSync() {
     try {
       // If we already have coordinates from the extension, use them directly
       let coordinates = item.coordinates;
-      let distances = undefined;
+      let distances: Property['distances'] = null;
 
       // Calculate distances if we have coordinates and a center point
       if (coordinates && settings.centerPoint) {

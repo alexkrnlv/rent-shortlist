@@ -15,6 +15,7 @@ import { useTutorialStore } from './store/useTutorialStore';
 import { useExtensionSync } from './hooks/useExtensionSync';
 import { useUrlSession } from './hooks/useUrlSession';
 import { hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
+import { buildSessionState } from './utils/urlSession';
 
 function App() {
   // Sync with Chrome extension (shows pending properties in sidebar)
@@ -31,7 +32,33 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { properties } = usePropertyStore();
+  const { settings } = useSettingsStore();
   const { hasCompleted, hasSkipped, startTutorial } = useTutorialStore();
+
+  // Apply dark mode class to html element
+  useEffect(() => {
+    const applyTheme = (isDark: boolean) => {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    if (settings.themeMode === 'dark') {
+      applyTheme(true);
+    } else if (settings.themeMode === 'light') {
+      applyTheme(false);
+    } else {
+      // Auto mode: use system preference
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      applyTheme(mediaQuery.matches);
+      
+      const handleChange = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [settings.themeMode]);
 
   // Close mobile sidebar when view mode changes
   useEffect(() => {
@@ -66,15 +93,30 @@ function App() {
   // Handle new session creation
   const handleNewSession = async () => {
     try {
+      // Build a proper empty session with current settings
+      const emptySessionData = buildSessionState(
+        [], // empty properties
+        [], // empty tags
+        settings.centerPoint, // current center point
+        {
+          maxDistance: null,
+          minPrice: null,
+          maxPrice: null,
+          minRating: null,
+          btrOnly: false,
+          selectedTags: [],
+          searchQuery: '',
+          sortBy: 'createdAt',
+          sortDirection: 'desc',
+        } // default filters
+      );
+      
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          data: {
-            properties: [],
-            settings: useSettingsStore.getState().settings,
-          }
-        }), // Empty session with settings
+          data: emptySessionData
+        }),
       });
       
       if (response.ok) {

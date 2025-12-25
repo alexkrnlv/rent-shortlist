@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Settings, CenterPoint } from '../types';
+import type { Settings, CenterPoint, ThemeMode } from '../types';
 
 const DEFAULT_CENTER: CenterPoint = {
   name: 'Bank of England, London',
@@ -13,6 +13,7 @@ interface SettingsState {
   setGoogleMapsApiKey: (key: string) => void;
   setClaudeApiKey: (key: string) => void;
   setCenterPoint: (center: CenterPoint) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   hasRequiredKeys: () => boolean;
 }
 
@@ -23,6 +24,7 @@ export const useSettingsStore = create<SettingsState>()(
         centerPoint: DEFAULT_CENTER,
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
         claudeApiKey: import.meta.env.VITE_CLAUDE_API_KEY || '',
+        themeMode: 'auto',
       },
       setGoogleMapsApiKey: (key: string) =>
         set((state) => ({
@@ -35,6 +37,10 @@ export const useSettingsStore = create<SettingsState>()(
       setCenterPoint: (center: CenterPoint) =>
         set((state) => ({
           settings: { ...state.settings, centerPoint: center },
+        })),
+      setThemeMode: (mode: ThemeMode) =>
+        set((state) => ({
+          settings: { ...state.settings, themeMode: mode },
         })),
       hasRequiredKeys: () => {
         const { settings } = get();

@@ -16,6 +16,12 @@ body {
   text-size-adjust: 100%;
   /* Improve touch scrolling on mobile */
   -webkit-overflow-scrolling: touch;
+  @apply bg-white text-gray-900;
+}
+
+.dark body,
+html.dark body {
+  @apply bg-gray-900 text-gray-100;
 }
 
 #root {
@@ -40,6 +46,19 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 .property-marker {

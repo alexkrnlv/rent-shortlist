@@ -48,10 +48,12 @@ export interface Settings {
   centerPoint: CenterPoint;
   googleMapsApiKey: string;
   claudeApiKey: string;
+  themeMode: ThemeMode;
 }
 
 export type SortField = 'rating' | 'distance' | 'price' | 'createdAt' | 'name' | 'publicTransport' | 'walking' | 'driving';
 export type SortDirection = 'asc' | 'desc';
+export type ThemeMode = 'light' | 'dark' | 'auto';
 
 export interface Filters {
   maxDistance: number | null;

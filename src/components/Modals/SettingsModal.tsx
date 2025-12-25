@@ -5,7 +5,8 @@ import { Input } from '../ui/Input';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
-import { MapPin, GraduationCap, RefreshCw } from 'lucide-react';
+import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor } from 'lucide-react';
+import type { ThemeMode } from '../../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,7 +14,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, setCenterPoint } = useSettingsStore();
+  const { settings, setCenterPoint, setThemeMode } = useSettingsStore();
   const { recalculateDistances, properties } = usePropertyStore();
   const { startTutorial, resetTutorial } = useTutorialStore();
 
@@ -121,9 +122,41 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
 
+        {/* Theme Section */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Sun size={16} className="dark:hidden" />
+            <Moon size={16} className="hidden dark:block" />
+            Theme
+          </h3>
+          <div className="flex gap-2">
+            {([
+              { mode: 'light' as ThemeMode, icon: Sun, label: 'Light' },
+              { mode: 'dark' as ThemeMode, icon: Moon, label: 'Dark' },
+              { mode: 'auto' as ThemeMode, icon: Monitor, label: 'Auto' },
+            ]).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => setThemeMode(mode)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  settings.themeMode === mode
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                <Icon size={18} />
+                <span className="font-medium text-sm">{label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Auto mode follows your system preference.
+          </p>
+        </div>
+
         {/* Tutorial Section */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <GraduationCap size={16} />
             Help & Tutorial
           </h3>

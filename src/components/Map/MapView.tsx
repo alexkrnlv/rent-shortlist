@@ -11,17 +11,41 @@ const mapContainerStyle = {
   height: '100%',
 };
 
-const mapOptions: google.maps.MapOptions = {
+const lightMapStyles: google.maps.MapTypeStyle[] = [
+  { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+];
+
+const darkMapStyles: google.maps.MapTypeStyle[] = [
+  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9a76' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+  { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+  { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
+];
+
+const getMapOptions = (isDark: boolean): google.maps.MapOptions => ({
   disableDefaultUI: false,
   zoomControl: true,
   mapTypeControl: false,
   streetViewControl: false,
   fullscreenControl: true,
-  styles: [
-    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-    { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  ],
-};
+  styles: isDark ? darkMapStyles : lightMapStyles,
+});
 
 interface PropertyMarkerProps {
   property: Property;
@@ -93,7 +117,7 @@ function PropertyMarker({ property, isSelected, onClick }: PropertyMarkerProps) 
               BTR
             </div>
           )}
-          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 bg-white px-2 py-0.5 rounded shadow-md text-xs font-medium text-gray-800 whitespace-nowrap">
+          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-md text-xs font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
             {property.price || property.name.substring(0, 15)}
           </div>
         </div>
@@ -112,7 +136,7 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
       mapPaneName={OverlayView.FLOAT_PANE}
     >
       <div
-        className="bg-white rounded-lg shadow-xl border border-gray-200 w-[calc(100vw-2rem)] max-w-[320px] min-w-[240px] md:min-w-[280px]"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-[calc(100vw-2rem)] max-w-[320px] min-w-[240px] md:min-w-[280px]"
         style={{
           transform: 'translate(-50%, -100%)',
           marginTop: '-70px',
@@ -123,10 +147,10 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
       >
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 z-10 p-2 md:p-1 bg-white rounded-full shadow hover:bg-gray-100 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+          className="absolute top-2 right-2 z-10 p-2 md:p-1 bg-white dark:bg-gray-700 rounded-full shadow hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
           aria-label="Close popup"
         >
-          <X size={18} className="text-gray-600 md:w-4 md:h-4" />
+          <X size={18} className="text-gray-600 dark:text-gray-300 md:w-4 md:h-4" />
         </button>
 
         {property.thumbnail && (
@@ -139,14 +163,14 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
 
         <div className="p-3 md:p-3">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-gray-900 mb-1 pr-8 md:pr-6 flex-1 text-sm md:text-base">{property.name}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-8 md:pr-6 flex-1 text-sm md:text-base">{property.name}</h3>
             {property.isBTR && (
               <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded flex-shrink-0">
                 BTR
               </span>
             )}
           </div>
-          <p className="text-xs md:text-sm text-gray-600 mb-2">{property.address}</p>
+          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">{property.address}</p>
 
           {/* Rating */}
           <div className="mb-2">
@@ -159,24 +183,24 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
 
           {property.distances && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
-              <div className="flex items-center gap-1.5 text-gray-600">
+              <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                 <Navigation size={12} className="md:w-3.5 md:h-3.5" />
                 <span>{property.distances.direct.toFixed(1)}km direct</span>
               </div>
               {property.distances.publicTransport && (
-                <div className="flex items-center gap-1.5 text-gray-600">
+                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                   <Train size={12} className="md:w-3.5 md:h-3.5" />
                   <span>{property.distances.publicTransport.duration}</span>
                 </div>
               )}
               {property.distances.walking && (
-                <div className="flex items-center gap-1.5 text-gray-600">
+                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                   <PersonStanding size={12} className="md:w-3.5 md:h-3.5" />
                   <span>{property.distances.walking.duration}</span>
                 </div>
               )}
               {property.distances.driving && (
-                <div className="flex items-center gap-1.5 text-gray-600">
+                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                   <Car size={12} className="md:w-3.5 md:h-3.5" />
                   <span>{property.distances.driving.duration}</span>
                 </div>
@@ -209,6 +233,22 @@ export function MapView() {
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
   const [showTransit, setShowTransit] = useState(false);
   const [transitLayer, setTransitLayer] = useState<google.maps.TransitLayer | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Track dark mode state
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    
+    // Watch for class changes on html element
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    
+    return () => observer.disconnect();
+  }, []);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: settings.googleMapsApiKey,
@@ -276,6 +316,13 @@ export function MapView() {
     }
   }, [map, transitLayer, showTransit]);
 
+  // Apply dark mode styles to map
+  useEffect(() => {
+    if (map) {
+      map.setOptions({ styles: isDarkMode ? darkMapStyles : lightMapStyles });
+    }
+  }, [map, isDarkMode]);
+
   const handleMarkerClick = (propertyId: string) => {
     if (selectedPropertyId === propertyId) {
       setShowPopup(!showPopup);
@@ -292,11 +339,11 @@ export function MapView() {
 
   if (loadError) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-100">
+      <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="text-center p-8">
-          <MapPin size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Map Loading Error</h3>
-          <p className="text-gray-500">Please check your Google Maps API key in Settings</p>
+          <MapPin size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Map Loading Error</h3>
+          <p className="text-gray-500 dark:text-gray-400">Please check your Google Maps API key in Settings</p>
         </div>
       </div>
     );
@@ -304,7 +351,7 @@ export function MapView() {
 
   if (!isLoaded) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-100">
+      <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="spinner" />
       </div>
     );
@@ -312,11 +359,11 @@ export function MapView() {
 
   if (!settings.googleMapsApiKey) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-100">
+      <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="text-center p-8">
-          <MapPin size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Google Maps API Key Required</h3>
-          <p className="text-gray-500">Please add your API key in Settings to view the map</p>
+          <MapPin size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Google Maps API Key Required</h3>
+          <p className="text-gray-500 dark:text-gray-400">Please add your API key in Settings to view the map</p>
         </div>
       </div>
     );
@@ -328,7 +375,7 @@ export function MapView() {
         mapContainerStyle={mapContainerStyle}
         center={settings.centerPoint}
         zoom={12}
-        options={mapOptions}
+        options={getMapOptions(isDarkMode)}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onClick={handleMapClick}
@@ -369,13 +416,13 @@ export function MapView() {
       {/* Map Controls Overlay */}
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         {/* Map Type Toggle */}
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <button
             onClick={() => setMapType('roadmap')}
             className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors ${
               mapType === 'roadmap'
                 ? 'bg-primary-700 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
             title="Road Map"
           >
@@ -383,10 +430,10 @@ export function MapView() {
           </button>
           <button
             onClick={() => setMapType('satellite')}
-            className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors border-t border-gray-200 ${
+            className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors border-t border-gray-200 dark:border-gray-700 ${
               mapType === 'satellite'
                 ? 'bg-primary-700 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
             title="Satellite View"
           >
@@ -400,7 +447,7 @@ export function MapView() {
           className={`px-4 py-2 text-sm font-medium rounded-lg shadow-lg border transition-colors ${
             showTransit
               ? 'bg-primary-700 text-white border-primary-700'
-              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
           title="Toggle Public Transport"
         >

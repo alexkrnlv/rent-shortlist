@@ -1300,8 +1300,14 @@ app.post('/api/parse-property-content', async (req, res) => {
     }
 
     // Truncate page text to fit within Claude's context (leave room for prompt)
-    const maxTextLength = 30000;
+    const maxTextLength = 25000;
     const pageText = (pageContent.fullPageText || '').substring(0, maxTextLength);
+    
+    console.log('=== PARSING PROPERTY ===');
+    console.log('URL:', pageContent.url);
+    console.log('Title:', pageContent.pageTitle);
+    console.log('Text length:', pageText.length);
+    console.log('First 500 chars:', pageText.substring(0, 500));
 
     // Use Claude to parse the content - give it ALL the text and let it figure it out
     const anthropic = new Anthropic({ apiKey: claudeApiKey });
@@ -1312,46 +1318,47 @@ app.post('/api/parse-property-content', async (req, res) => {
       messages: [
         {
           role: 'user',
-          content: `You are extracting property details from a UK rental listing page.
+          content: `Extract property details from this UK rental listing.
 
 URL: ${pageContent.url}
 PAGE TITLE: ${pageContent.pageTitle}
 
-AVAILABLE IMAGES:
-${(pageContent.images || []).slice(0, 5).join('\n')}
-
-FULL PAGE TEXT:
+PAGE TEXT:
 ${pageText}
 
 ---
 
-From the above page content, extract the property details. 
+Extract the PROPERTY ADDRESS from this listing. Look for:
+1. Street names (e.g., "Charlton Road", "High Street", "Baldwin Lane")
+2. Area names (e.g., "Blackheath", "Canary Wharf", "Shoreditch")  
+3. UK postcodes (e.g., "SE3", "E14 5AB", "N1")
 
-IMPORTANT: 
-- The PROPERTY ADDRESS is where the rental is located (usually in the page title or main heading)
-- IGNORE agent/estate agent office addresses (these appear in "Marketed by", "Contact", footer sections)
-- The address should be a street/area name with postcode (e.g., "Charlton Road, Blackheath, SE3")
-- Do NOT include "X bed flat to rent" or similar text in the address - just the location
+The address is usually in the page title or the main property heading.
+IGNORE any addresses in "Marketed by", "Contact agent", or footer sections - those are agent offices.
 
-Return ONLY a JSON object with these fields:
+You MUST provide an address. If you can only find a partial address (like just "Canary Wharf" or "E14"), use that.
+
+Return ONLY valid JSON:
 {
-  "name": "Short descriptive title (e.g., '1 bed flat, Charlton Road' or 'Studio apartment, Canary Wharf')",
-  "address": "Just the property location with postcode (e.g., 'Charlton Road, Blackheath, SE3')",
-  "price": "Monthly rent if found (e.g., '£1,750 pcm')",
+  "name": "descriptive title like '1 bed flat, Canary Wharf'",
+  "address": "the property location - REQUIRED, e.g., 'Canary Wharf, E14' or 'Charlton Road, Blackheath, SE3'",
+  "price": "rent amount like '£1,750 pcm' or null",
   "bedrooms": number or null,
-  "isBTR": true if Build-to-Rent (Quintain, Greystar, Get Living, Grainger, Fizzy, etc.)
+  "isBTR": true/false
 }`,
         },
       ],
     });
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    console.log('Claude raw response:', responseText);
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
+        console.log('Claude parsed:', JSON.stringify(parsed, null, 2));
         
         // Ensure we have images from the original content
         if (!parsed.thumbnail && pageContent.images && pageContent.images.length > 0) {
@@ -1359,15 +1366,35 @@ Return ONLY a JSON object with these fields:
         }
         parsed.images = pageContent.images || [];
         
-        console.log('Claude extracted:', parsed);
+        // If address is still empty, try to extract from page title
+        if (!parsed.address && pageContent.pageTitle) {
+          console.log('No address from Claude, trying page title extraction...');
+          // Look for postcode pattern in title
+          const postcodeMatch = pageContent.pageTitle.match(/([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i);
+          if (postcodeMatch) {
+            // Find the segment containing the postcode
+            const segments = pageContent.pageTitle.split(/[|\-–]/);
+            for (const seg of segments) {
+              if (seg.match(/[A-Z]{1,2}\d/i) && !seg.toLowerCase().includes('bed')) {
+                parsed.address = seg.trim();
+                console.log('Extracted from title:', parsed.address);
+                break;
+              }
+            }
+          }
+        }
+        
         return res.json(parsed);
       } catch (e) {
         console.error('Failed to parse AI response:', e);
+        console.error('Raw response was:', responseText);
       }
     }
 
     // Fallback to basic extraction
+    console.log('Falling back to basic extraction');
     const basicResult = extractBasicFromContent(pageContent);
+    console.log('Basic result:', basicResult);
     return res.json(basicResult);
 
   } catch (error) {

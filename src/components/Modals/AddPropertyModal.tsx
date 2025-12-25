@@ -5,7 +5,7 @@ import { usePropertyStore } from '../../store/usePropertyStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { extractUrlsFromText, generateId } from '../../utils/helpers';
 import { processProperty } from '../../services/propertyProcessor';
-import { Loader2, AlertCircle, CheckCircle, Link, Plus, XCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, Link, Plus, XCircle, Copy } from 'lucide-react';
 import type { Property } from '../../types';
 
 interface AddPropertyModalProps {
@@ -15,7 +15,7 @@ interface AddPropertyModalProps {
 
 interface ProcessingStatus {
   url: string;
-  status: 'pending' | 'processing' | 'success' | 'error';
+  status: 'pending' | 'processing' | 'success' | 'error' | 'duplicate';
   error?: string;
 }
 
@@ -41,7 +41,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
   const [isGeocodingManual, setIsGeocodingManual] = useState(false);
   const [manualError, setManualError] = useState('');
 
-  const { addProperty } = usePropertyStore();
+  const { addProperty, hasPropertyWithUrl } = usePropertyStore();
   const { settings } = useSettingsStore();
 
   const handleUrlSubmit = async () => {
@@ -49,13 +49,25 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
     if (urls.length === 0) return;
 
     setIsProcessing(true);
-    setProcessingStatuses(urls.map(url => ({ url, status: 'pending' })));
+    
+    // Check for duplicates first
+    const initialStatuses = urls.map(url => ({
+      url,
+      status: hasPropertyWithUrl(url) ? 'duplicate' as const : 'pending' as const,
+    }));
+    setProcessingStatuses(initialStatuses);
     setFailedUrls([]);
 
     const newFailedUrls: FailedUrl[] = [];
 
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
+      
+      // Skip if already marked as duplicate
+      if (initialStatuses[i].status === 'duplicate') {
+        continue;
+      }
+      
       setProcessingStatuses(prev =>
         prev.map((s, idx) => idx === i ? { ...s, status: 'processing' } : s)
       );
@@ -109,6 +121,12 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
 
   const handleManualSubmit = async () => {
     if (!manualName || !manualAddress) return;
+
+    // Check for duplicate URL if provided
+    if (manualUrl && hasPropertyWithUrl(manualUrl)) {
+      setManualError('This URL is already in your shortlist.');
+      return;
+    }
 
     setIsGeocodingManual(true);
 
@@ -277,8 +295,10 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                     {status.status === 'processing' && <Loader2 size={16} className="animate-spin text-primary-600" />}
                     {status.status === 'success' && <CheckCircle size={16} className="text-green-600" />}
                     {status.status === 'error' && <XCircle size={16} className="text-red-600" />}
-                    <span className="truncate flex-1 text-gray-600">
+                    {status.status === 'duplicate' && <Copy size={16} className="text-amber-500" />}
+                    <span className={`truncate flex-1 ${status.status === 'duplicate' ? 'text-amber-600' : 'text-gray-600'}`}>
                       {status.url.length > 50 ? status.url.substring(0, 50) + '...' : status.url}
+                      {status.status === 'duplicate' && <span className="ml-1 text-xs">(already added)</span>}
                     </span>
                   </div>
                 ))}

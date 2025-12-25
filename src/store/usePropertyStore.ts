@@ -11,6 +11,17 @@ export interface PendingProperty {
   addedAt: string;
 }
 
+// Normalize URL for duplicate detection (strips trailing slash, query params, fragments)
+export function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Keep origin + pathname, remove trailing slash
+    return (parsed.origin + parsed.pathname).replace(/\/$/, '').toLowerCase();
+  } catch {
+    return url.toLowerCase().replace(/\/$/, '');
+  }
+}
+
 interface PropertyState {
   properties: Property[];
   pendingProperties: PendingProperty[];
@@ -27,10 +38,14 @@ interface PropertyState {
   setSelectedProperty: (id: string | null) => void;
   getFilteredProperties: () => Property[];
   getPropertyById: (id: string) => Property | undefined;
+  // URL duplicate detection
+  hasPropertyWithUrl: (url: string) => boolean;
+  getPropertyByUrl: (url: string) => Property | undefined;
   // Pending properties (from extension, being processed)
   addPendingProperty: (pending: PendingProperty) => void;
   updatePendingProperty: (id: string, updates: Partial<PendingProperty>) => void;
   removePendingProperty: (id: string) => void;
+  hasPendingPropertyWithUrl: (url: string) => boolean;
   // Tag management
   addTag: (tag: PropertyTag) => void;
   updateTag: (id: string, updates: Partial<PropertyTag>) => void;
@@ -144,11 +159,24 @@ export const usePropertyStore = create<PropertyState>()(
         return sorted;
       },
       getPropertyById: (id: string) => get().properties.find((p) => p.id === id),
+      // URL duplicate detection
+      hasPropertyWithUrl: (url: string) => {
+        const normalized = normalizeUrl(url);
+        const { properties, pendingProperties } = get();
+        return properties.some(p => normalizeUrl(p.url) === normalized) ||
+               pendingProperties.some(p => normalizeUrl(p.url) === normalized);
+      },
+      getPropertyByUrl: (url: string) => {
+        const normalized = normalizeUrl(url);
+        return get().properties.find(p => normalizeUrl(p.url) === normalized);
+      },
       // Pending properties management
       addPendingProperty: (pending: PendingProperty) =>
         set((state) => {
-          // Don't add if already exists
+          // Don't add if already exists (by id or url)
           if (state.pendingProperties.some(p => p.id === pending.id)) return state;
+          if (state.pendingProperties.some(p => normalizeUrl(p.url) === normalizeUrl(pending.url))) return state;
+          if (state.properties.some(p => normalizeUrl(p.url) === normalizeUrl(pending.url))) return state;
           return { pendingProperties: [...state.pendingProperties, pending] };
         }),
       updatePendingProperty: (id: string, updates: Partial<PendingProperty>) =>
@@ -161,6 +189,10 @@ export const usePropertyStore = create<PropertyState>()(
         set((state) => ({
           pendingProperties: state.pendingProperties.filter((p) => p.id !== id),
         })),
+      hasPendingPropertyWithUrl: (url: string) => {
+        const normalized = normalizeUrl(url);
+        return get().pendingProperties.some(p => normalizeUrl(p.url) === normalized);
+      },
       // Tag management
       addTag: (tag: PropertyTag) =>
         set((state) => ({ tags: [...state.tags, tag] })),

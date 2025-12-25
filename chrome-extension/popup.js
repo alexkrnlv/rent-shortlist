@@ -179,6 +179,15 @@ function getApiUrl() {
   return appUrl;
 }
 
+// Custom error class for duplicates
+class DuplicateError extends Error {
+  constructor(message, existingProperty) {
+    super(message);
+    this.name = 'DuplicateError';
+    this.existingProperty = existingProperty;
+  }
+}
+
 // Fetch with error handling
 async function safeFetch(url, options = {}) {
   const response = await fetch(url, {
@@ -190,6 +199,13 @@ async function safeFetch(url, options = {}) {
   });
   
   if (!response.ok) {
+    // Check for duplicate error (409 Conflict)
+    if (response.status === 409) {
+      const data = await response.json().catch(() => ({}));
+      if (data.error === 'duplicate') {
+        throw new DuplicateError(data.message || 'Already added', data.existingProperty);
+      }
+    }
     const text = await response.text().catch(() => 'Unknown error');
     throw new Error(`Server error: ${text}`);
   }
@@ -314,6 +330,15 @@ async function handleAdd() {
 
   } catch (error) {
     console.error('Error adding property:', error);
+    
+    // Handle duplicate error specifically
+    if (error instanceof DuplicateError) {
+      // Save locally so we don't check server again
+      await saveAddedProperty(currentTab.url, currentTab.title);
+      showAlreadyAdded();
+      return;
+    }
+    
     showError(error.message || 'Could not connect to server. Check your App URL in settings.');
   }
 }

@@ -884,8 +884,11 @@ function validateAndCorrectAddress(
   extractedAddresses: ExtractedAddress[], 
   html: string
 ): any {
+  // Filter out any invalid pre-extracted addresses (CSS/JS code)
+  const validExtractedAddresses = extractedAddresses.filter(a => isValidAddress(a.fullAddress));
+  
   // First, check if we have a high-confidence address from title/H1
-  const titleAddress = extractedAddresses.find(a => a.isFromTitle && a.source === 'PROPERTY');
+  const titleAddress = validExtractedAddresses.find(a => a.isFromTitle && a.source === 'PROPERTY');
   
   if (titleAddress) {
     // We have a reliable address from the page title - this should be used
@@ -911,7 +914,7 @@ function validateAndCorrectAddress(
     }
   }
 
-  if (!aiResult.address || extractedAddresses.length === 0) {
+  if (!aiResult.address || validExtractedAddresses.length === 0) {
     // If no AI address, try to use title address
     if (titleAddress) {
       aiResult.address = titleAddress.fullAddress;
@@ -925,7 +928,7 @@ function validateAndCorrectAddress(
   const aiPostcodeMatch = aiResult.address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?/i);
   if (!aiPostcodeMatch) {
     // AI didn't return a valid UK postcode, try to use the best pre-classified one
-    const propertyAddresses = extractedAddresses
+    const propertyAddresses = validExtractedAddresses
       .filter(a => a.source === 'PROPERTY')
       .sort((a, b) => {
         // Prioritize title addresses, then by confidence
@@ -949,7 +952,7 @@ function validateAndCorrectAddress(
   const aiPostcode = aiPostcodeMatch[0].toUpperCase().replace(/\s+/g, ' ');
   
   // Find this postcode in our pre-classified addresses
-  const matchingAddress = extractedAddresses.find(a => {
+  const matchingAddress = validExtractedAddresses.find(a => {
     const normalizedAI = aiPostcode.replace(/\s+/g, '');
     const normalizedExtracted = a.postcode.replace(/\s+/g, '');
     return normalizedAI === normalizedExtracted || 
@@ -967,7 +970,7 @@ function validateAndCorrectAddress(
     console.log(`Address warning: AI picked ${matchingAddress.source} address (${aiPostcode}) from ${matchingAddress.htmlLocation}`);
     
     // Find best property address as alternative
-    const propertyAddresses = extractedAddresses
+    const propertyAddresses = validExtractedAddresses
       .filter(a => a.source === 'PROPERTY')
       .sort((a, b) => {
         if (a.isFromTitle && !b.isFromTitle) return -1;
@@ -1148,6 +1151,12 @@ ${preparedContent}`,
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
+        
+        // First, validate the address isn't CSS/JS code
+        if (!isValidAddress(parsed.address)) {
+          console.log('⚠️ Invalid address detected from Claude in fetch-property, clearing');
+          parsed.address = '';
+        }
         
         // Validate and potentially correct the address
         const extractedAddresses = extractAddressesWithContext(html);
@@ -1409,7 +1418,9 @@ async function processPropertyInBackground(property: ExtensionProperty): Promise
       throw new Error('No content available for AI parsing');
     }
 
-    console.log(`   Content length: ${contentForAI.length} chars`);
+    // Sanitize content to remove CSS/JS that might confuse AI
+    contentForAI = sanitizeContentForAI(contentForAI);
+    console.log(`   Content length (sanitized): ${contentForAI.length} chars`);
     
     // Call Claude for extraction - Claude parses EVERYTHING
     const anthropic = new Anthropic({ apiKey: claudeApiKey });
@@ -1454,6 +1465,22 @@ ${contentForAI.substring(0, 80000)}`,
 
     const parsed = JSON.parse(jsonMatch[0]);
     console.log('   Parsed:', parsed.name, '|', parsed.address);
+    
+    // Validate the address - reject CSS/JS code
+    if (!isValidAddress(parsed.address)) {
+      console.log('   ⚠️ Invalid address detected, attempting fallback extraction');
+      
+      // Try to extract address from URL or title
+      const urlMatch = property.url.match(/([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)/i);
+      if (urlMatch) {
+        parsed.address = urlMatch[1].toUpperCase();
+        console.log('   Fallback address from URL:', parsed.address);
+      } else {
+        // Clear invalid address
+        parsed.address = '';
+        console.log('   Could not find valid fallback address');
+      }
+    }
     
     // Geocode the address
     let coordinates: { lat: number; lng: number } | null = null;
@@ -1534,6 +1561,16 @@ app.post('/api/tags', (req, res) => {
   res.json({ success: true, tags: storedTags });
 });
 
+// Normalize URL for duplicate detection
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return (parsed.origin + parsed.pathname).replace(/\/$/, '').toLowerCase();
+  } catch {
+    return url.toLowerCase().replace(/\/$/, '');
+  }
+}
+
 // Add property from Chrome extension
 app.post('/api/add-property', async (req, res) => {
   try {
@@ -1543,6 +1580,23 @@ app.post('/api/add-property', async (req, res) => {
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Check for duplicate URL in extension properties
+    const allProperties = await propertyStorage.getAll();
+    const normalizedUrl = normalizeUrl(url);
+    const existingProperty = allProperties.find(p => normalizeUrl(p.url) === normalizedUrl);
+    
+    if (existingProperty) {
+      return res.status(409).json({ 
+        error: 'duplicate', 
+        message: 'This property is already in your shortlist',
+        existingProperty: {
+          id: existingProperty.id,
+          title: existingProperty.title,
+          url: existingProperty.url,
+        }
+      });
     }
 
     const property: ExtensionProperty = {
@@ -1663,11 +1717,14 @@ app.post('/api/parse-property-content', async (req, res) => {
       return res.json(basicResult);
     }
 
-    // Truncate page text to fit within Claude's context (leave room for prompt)
+    // Sanitize and truncate page text to fit within Claude's context (leave room for prompt)
     const maxTextLength = 25000;
-    const pageText = (pageContent.fullPageText || '').substring(0, maxTextLength);
+    const rawPageText = (pageContent.fullPageText || '');
+    const sanitizedText = sanitizeContentForAI(rawPageText);
+    const pageText = sanitizedText.substring(0, maxTextLength);
     
     console.log('=== PARSING PROPERTY ===');
+    console.log('Raw text length:', rawPageText.length, '-> Sanitized:', sanitizedText.length);
     console.log('URL:', pageContent.url);
     console.log('Title:', pageContent.pageTitle);
     console.log('Text length:', pageText.length);
@@ -1724,13 +1781,19 @@ Return ONLY valid JSON:
         const parsed = JSON.parse(jsonMatch[0]);
         console.log('Claude parsed:', JSON.stringify(parsed, null, 2));
         
+        // Validate the address - reject CSS/JS code
+        if (!isValidAddress(parsed.address)) {
+          console.log('⚠️ Invalid address detected from Claude, clearing it');
+          parsed.address = '';
+        }
+        
         // Ensure we have images from the original content
         if (!parsed.thumbnail && pageContent.images && pageContent.images.length > 0) {
           parsed.thumbnail = pageContent.images[0];
         }
         parsed.images = pageContent.images || [];
         
-        // If address is still empty, try to extract from page title
+        // If address is still empty or invalid, try to extract from page title
         if (!parsed.address && pageContent.pageTitle) {
           console.log('No address from Claude, trying page title extraction...');
           // Look for postcode pattern in title
@@ -1767,6 +1830,83 @@ Return ONLY valid JSON:
   }
 });
 
+// Validate that an address looks like a real UK address (not CSS/JS code)
+function isValidAddress(address: string | null | undefined): boolean {
+  if (!address || typeof address !== 'string') return false;
+  
+  const trimmed = address.trim();
+  if (trimmed.length < 3 || trimmed.length > 200) return false;
+  
+  // Patterns that indicate CSS/JS code - NOT a valid address
+  const invalidPatterns = [
+    /\{[^}]*\}/, // CSS blocks: { ... }
+    /\.[a-z-]+\s*\{/i, // CSS selectors: .class {
+    /\[[^\]]*\]/, // CSS attribute selectors or array syntax
+    /var\s+\w+\s*=/, // JavaScript variables
+    /function\s*\(/, // JavaScript functions
+    /document\./i, // DOM manipulation
+    /createElement|appendChild|innerHTML/i, // DOM methods
+    /@media|@keyframes|@import/i, // CSS at-rules
+    /!important/i, // CSS important
+    /url\s*\(/i, // CSS url()
+    /calc\s*\(/i, // CSS calc()
+    /rgba?\s*\(/i, // CSS colors
+    /hsla?\s*\(/i, // CSS colors
+    /padding|margin|border|background|display|position|font|color|width|height/i, // CSS properties
+    /webkit|moz|ms-/i, // Browser prefixes
+    /data-v-[a-f0-9]+/i, // Vue scoped styles
+    /\.webp\)|\.jpg\)|\.png\)/i, // Image file references in CSS
+    /\bpx\b|\bem\b|\brem\b|\b%\s*\)/i, // CSS units in context
+    /visibility:\s*hidden/i, // CSS visibility
+    /overflow:\s*hidden/i, // CSS overflow
+    /\bvar\s*\(/i, // CSS variables
+  ];
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(trimmed)) {
+      console.log(`Invalid address detected (matches ${pattern}): "${trimmed.substring(0, 50)}..."`);
+      return false;
+    }
+  }
+  
+  // Should contain at least some letter characters
+  if (!/[a-zA-Z]{2,}/.test(trimmed)) return false;
+  
+  // Additional heuristic: if it has too many special characters, likely code
+  const specialCharCount = (trimmed.match(/[{}\[\]();:=<>]/g) || []).length;
+  if (specialCharCount > 3) {
+    console.log(`Invalid address detected (too many special chars): "${trimmed.substring(0, 50)}..."`);
+    return false;
+  }
+  
+  return true;
+}
+
+// Clean and sanitize content for AI parsing
+function sanitizeContentForAI(content: string): string {
+  let cleaned = content;
+  
+  // Remove inline styles and style blocks
+  cleaned = cleaned.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ');
+  cleaned = cleaned.replace(/style\s*=\s*["'][^"']*["']/gi, ' ');
+  
+  // Remove script content
+  cleaned = cleaned.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ');
+  
+  // Remove CSS-like content (patterns that look like CSS rules)
+  cleaned = cleaned.replace(/\.[a-z_-]+\s*\{[^}]*\}/gi, ' ');
+  cleaned = cleaned.replace(/\{[^}]*:[^}]*\}/g, ' ');
+  cleaned = cleaned.replace(/@[a-z-]+\s*\{[^}]*\}/gi, ' ');
+  
+  // Remove image URL patterns that might confuse the AI
+  cleaned = cleaned.replace(/url\s*\([^)]+\)/gi, ' ');
+  
+  // Collapse multiple whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  
+  return cleaned.trim();
+}
+
 // Basic extraction from content without AI (fallback)
 function extractBasicFromContent(content: any): any {
   const result: any = {
@@ -1785,7 +1925,11 @@ function extractBasicFromContent(content: any): any {
     const parts = titleText.split(/[|\-–]/);
     for (const part of parts) {
       if (part.match(/[A-Z]{1,2}\d/i)) {
-        result.address = part.trim();
+        const candidate = part.trim();
+        // Validate before assigning
+        if (isValidAddress(candidate)) {
+          result.address = candidate;
+        }
         break;
       }
     }

@@ -2,8 +2,18 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Property, Filters, PropertyTag } from '../types';
 
+// Pending property from extension (being processed by AI)
+export interface PendingProperty {
+  id: string;
+  url: string;
+  status: 'processing' | 'failed';
+  error?: string;
+  addedAt: string;
+}
+
 interface PropertyState {
   properties: Property[];
+  pendingProperties: PendingProperty[];
   tags: PropertyTag[];
   filters: Filters;
   selectedPropertyId: string | null;
@@ -17,6 +27,10 @@ interface PropertyState {
   setSelectedProperty: (id: string | null) => void;
   getFilteredProperties: () => Property[];
   getPropertyById: (id: string) => Property | undefined;
+  // Pending properties (from extension, being processed)
+  addPendingProperty: (pending: PendingProperty) => void;
+  updatePendingProperty: (id: string, updates: Partial<PendingProperty>) => void;
+  removePendingProperty: (id: string) => void;
   // Tag management
   addTag: (tag: PropertyTag) => void;
   updateTag: (id: string, updates: Partial<PropertyTag>) => void;
@@ -41,6 +55,7 @@ export const usePropertyStore = create<PropertyState>()(
   persist(
     (set, get) => ({
       properties: [],
+      pendingProperties: [],
       tags: [],
       filters: DEFAULT_FILTERS,
       selectedPropertyId: null,
@@ -129,6 +144,23 @@ export const usePropertyStore = create<PropertyState>()(
         return sorted;
       },
       getPropertyById: (id: string) => get().properties.find((p) => p.id === id),
+      // Pending properties management
+      addPendingProperty: (pending: PendingProperty) =>
+        set((state) => {
+          // Don't add if already exists
+          if (state.pendingProperties.some(p => p.id === pending.id)) return state;
+          return { pendingProperties: [...state.pendingProperties, pending] };
+        }),
+      updatePendingProperty: (id: string, updates: Partial<PendingProperty>) =>
+        set((state) => ({
+          pendingProperties: state.pendingProperties.map((p) =>
+            p.id === id ? { ...p, ...updates } : p
+          ),
+        })),
+      removePendingProperty: (id: string) =>
+        set((state) => ({
+          pendingProperties: state.pendingProperties.filter((p) => p.id !== id),
+        })),
       // Tag management
       addTag: (tag: PropertyTag) =>
         set((state) => ({ tags: [...state.tags, tag] })),

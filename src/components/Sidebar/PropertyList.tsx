@@ -1,10 +1,11 @@
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { PropertyCard } from './PropertyCard';
+import { PendingPropertyCard } from './PendingPropertyCard';
 import { MapPin } from 'lucide-react';
 
 export function PropertyList() {
-  const { getFilteredProperties, selectedPropertyId, setSelectedProperty, updateProperty, removeProperty, tags, addTagToProperty, removeTagFromProperty } = usePropertyStore();
+  const { getFilteredProperties, selectedPropertyId, setSelectedProperty, updateProperty, removeProperty, tags, addTagToProperty, removeTagFromProperty, pendingProperties, removePendingProperty } = usePropertyStore();
   const { settings } = useSettingsStore();
   const properties = getFilteredProperties();
 
@@ -78,7 +79,10 @@ export function PropertyList() {
     }
   };
 
-  if (properties.length === 0) {
+  const hasPending = pendingProperties.length > 0;
+  const hasProperties = properties.length > 0;
+
+  if (!hasPending && !hasProperties) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
@@ -92,6 +96,16 @@ export function PropertyList() {
 
   return (
     <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
+      {/* Pending properties (being processed) - shown first */}
+      {pendingProperties.map((pending) => (
+        <PendingPropertyCard
+          key={pending.id}
+          pending={pending}
+          onDismiss={() => removePendingProperty(pending.id)}
+        />
+      ))}
+      
+      {/* Regular properties */}
       {properties.map((property) => (
         <PropertyCard
           key={property.id}

@@ -11,22 +11,12 @@ import { Tutorial } from './components/Tutorial';
 import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
 import { useTutorialStore } from './store/useTutorialStore';
-import { useExtensionSync, setToastCallback } from './hooks/useExtensionSync';
-import { useToast } from './components/ui/Toast';
+import { useExtensionSync } from './hooks/useExtensionSync';
 import { useUrlSession } from './hooks/useUrlSession';
 import { hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
 
 function App() {
-  // Toast notifications
-  const { addToast } = useToast();
-  
-  // Connect toast callback for extension sync
-  useEffect(() => {
-    setToastCallback(addToast);
-    return () => setToastCallback(null);
-  }, [addToast]);
-
-  // Sync with Chrome extension
+  // Sync with Chrome extension (shows pending properties in sidebar)
   useExtensionSync();
   
   // Sync state with URL

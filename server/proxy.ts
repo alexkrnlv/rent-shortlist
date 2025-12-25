@@ -1265,6 +1265,7 @@ app.post('/api/distances', async (req, res) => {
 interface ExtensionProperty {
   id: string;
   url: string;
+  pageText?: string;  // Full page text from extension for AI parsing
   title: string;
   address: string;
   thumbnail: string;
@@ -1367,97 +1368,132 @@ async function processPropertyInBackground(property: ExtensionProperty): Promise
   try {
     await propertyStorage.update(property.id, { processingStatus: 'processing' });
 
-    // Fetch and parse property
+    // Broadcast processing status
+    broadcastToClients({
+      type: 'property-processing',
+      propertyId: property.id,
+      status: 'processing',
+    });
+
     const claudeApiKey = process.env.ANTHROPIC_API_KEY;
     if (!claudeApiKey) {
       throw new Error('No Claude API key available for background processing');
     }
 
-    // Use fetch with User-Agent to get page content
-    const response = await fetch(property.url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
+    // Use pageText from extension if available (bypasses anti-scraping)
+    // Otherwise try to fetch the page server-side
+    let contentForAI = property.pageText || '';
+    
+    if (!contentForAI || contentForAI.length < 100) {
+      console.log('   No page text from extension, trying server-side fetch...');
+      try {
+        const response = await fetch(property.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        });
 
-    if (!response.ok) {
-      // Some sites block server-side fetching - mark for app processing
-      console.log(`⚠️ Could not fetch ${property.url} (${response.status}) - will be processed by app`);
-      await propertyStorage.update(property.id, { 
-        processingStatus: 'pending',
-        error: `Fetch failed: ${response.status}`,
-      });
-      return;
+        if (response.ok) {
+          const html = await response.text();
+          contentForAI = prepareHtmlForAI(html, property.url);
+        } else {
+          console.log(`   Server fetch failed: ${response.status}`);
+        }
+      } catch (fetchError) {
+        console.log('   Server fetch error:', (fetchError as Error).message);
+      }
     }
 
-    const html = await response.text();
+    if (!contentForAI || contentForAI.length < 50) {
+      throw new Error('No content available for AI parsing');
+    }
 
-    // Prepare content for AI
-    const preparedContent = prepareHtmlForAI(html, property.url);
+    console.log(`   Content length: ${contentForAI.length} chars`);
     
-    // Call Claude for extraction
+    // Call Claude for extraction - Claude parses EVERYTHING
     const anthropic = new Anthropic({ apiKey: claudeApiKey });
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      max_tokens: 2000,
       messages: [{
         role: 'user',
-        content: `Extract property details from this UK rental listing. Return JSON only:
+        content: `You are parsing a UK property rental listing. Extract ALL details from the page content below.
+
+Return a JSON object with these fields:
 {
-  "name": "property title",
-  "address": "full address with postcode",
-  "price": "monthly rent",
-  "isBTR": true/false (Build to Rent development)
+  "name": "descriptive title - e.g., '2 Bed Flat, Canary Wharf'",
+  "address": "full property address with postcode - NOT the estate agent's address",
+  "price": "monthly rent - e.g., '£2,500 pcm'",
+  "thumbnail": "main property image URL if found",
+  "isBTR": true/false
 }
 
-URL: ${property.url}
-Content:
-${preparedContent.substring(0, 50000)}`,
+## Important Rules:
+1. The ADDRESS must be the PROPERTY location, not the estate agent's office
+2. Look for postcode patterns (e.g., E14 5AB, SW1A 1AA)
+3. isBTR = true if this is a Build-to-Rent development (Quintain, Get Living, Greystar, Fizzy, Grainger, Essential Living, etc.)
+4. Extract the actual monthly rent price
+
+## Page URL:
+${property.url}
+
+## Page Content:
+${contentForAI.substring(0, 80000)}`,
       }],
     });
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    console.log('   Claude response received');
+    
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     
     if (!jsonMatch) {
-      throw new Error('Could not parse AI response');
+      throw new Error('Could not parse AI response - no JSON found');
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
+    console.log('   Parsed:', parsed.name, '|', parsed.address);
     
     // Geocode the address
     let coordinates: { lat: number; lng: number } | null = null;
     if (parsed.address) {
       const geocodeKey = process.env.GOOGLE_MAPS_API_KEY;
       if (geocodeKey) {
-        const geoResponse = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsed.address)}&key=${geocodeKey}`
-        );
-        const geoData = await geoResponse.json();
-        if (geoData.results?.[0]?.geometry?.location) {
-          coordinates = {
-            lat: geoData.results[0].geometry.location.lat,
-            lng: geoData.results[0].geometry.location.lng,
-          };
+        try {
+          const geoResponse = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsed.address + ', UK')}&key=${geocodeKey}`
+          );
+          const geoData = await geoResponse.json();
+          if (geoData.results?.[0]?.geometry?.location) {
+            coordinates = {
+              lat: geoData.results[0].geometry.location.lat,
+              lng: geoData.results[0].geometry.location.lng,
+            };
+            console.log('   Geocoded:', coordinates.lat, coordinates.lng);
+          }
+        } catch (geoError) {
+          console.log('   Geocoding failed:', (geoError as Error).message);
         }
       }
     }
 
-    // Update property with parsed data
+    // Update property with ALL parsed data
     await propertyStorage.update(property.id, {
-      title: parsed.name || property.title,
-      address: parsed.address || property.address,
-      price: parsed.price || property.price,
-      isBTR: parsed.isBTR || property.isBTR,
+      title: parsed.name || 'Property',
+      address: parsed.address || '',
+      thumbnail: parsed.thumbnail || property.thumbnail,
+      price: parsed.price || '',
+      isBTR: parsed.isBTR || false,
       coordinates,
       processingStatus: 'completed',
+      pageText: undefined, // Clear page text to save storage
       error: undefined,
     });
 
     console.log(`✅ Background processing complete: ${parsed.name || property.url}`);
 
-    // Broadcast update to connected clients
+    // Broadcast completion to connected clients
     const updatedProperty = await propertyStorage.get(property.id);
     if (updatedProperty) {
       broadcastToClients({
@@ -1469,7 +1505,16 @@ ${preparedContent.substring(0, 50000)}`,
   } catch (error) {
     console.error(`❌ Background processing failed for ${property.url}:`, error);
     await propertyStorage.update(property.id, {
+      title: 'Failed to process',
       processingStatus: 'failed',
+      error: (error as Error).message,
+    });
+    
+    // Broadcast failure
+    broadcastToClients({
+      type: 'property-processing',
+      propertyId: property.id,
+      status: 'failed',
       error: (error as Error).message,
     });
   }
@@ -1492,7 +1537,9 @@ app.post('/api/tags', (req, res) => {
 // Add property from Chrome extension
 app.post('/api/add-property', async (req, res) => {
   try {
-    const { url, title, address, thumbnail, price, coordinates, isBTR, tags, needsProcessing } = req.body;
+    // Extension sends ONLY: url, pageText, ogImage, tags
+    // Everything else is parsed by Claude
+    const { url, pageText, ogImage, tags } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
@@ -1501,13 +1548,14 @@ app.post('/api/add-property', async (req, res) => {
     const property: ExtensionProperty = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2),
       url,
-      title: title || 'Property',
-      address: address || '',
-      thumbnail: thumbnail || '',
-      price: price || '',
-      coordinates: coordinates || null,
-      isBTR: isBTR || false,
-      tags: tags || [],
+      pageText: pageText || '',  // Store page text for AI processing
+      title: 'Processing...',    // Will be filled by Claude
+      address: '',               // Will be filled by Claude
+      thumbnail: ogImage || '',  // Fallback, Claude may find better
+      price: '',                 // Will be filled by Claude
+      coordinates: null,         // Will be filled after geocoding
+      isBTR: false,              // Will be filled by Claude
+      tags: tags || [],          // User-selected tags from extension
       addedAt: new Date().toISOString(),
       processed: false,
       processingStatus: 'pending',
@@ -1517,6 +1565,7 @@ app.post('/api/add-property', async (req, res) => {
     await propertyStorage.add(property);
 
     console.log('📥 Property added from extension:', property.url);
+    console.log('   Page text length:', (pageText || '').length, 'chars');
 
     // Broadcast to all connected clients for real-time update
     broadcastToClients({
@@ -1524,12 +1573,10 @@ app.post('/api/add-property', async (req, res) => {
       property,
     });
 
-    // Start background processing (non-blocking)
-    if (needsProcessing) {
-      processPropertyInBackground(property).catch(err => {
-        console.error('Background processing error:', err);
-      });
-    }
+    // Start background processing immediately (non-blocking)
+    processPropertyInBackground(property).catch(err => {
+      console.error('Background processing error:', err);
+    });
 
     res.json({ success: true, property, storage: redis ? 'redis' : 'memory' });
   } catch (error) {

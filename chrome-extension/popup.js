@@ -265,7 +265,8 @@ function renderTags() {
   });
 }
 
-// Main add handler - SIMPLE: just send URL to server
+// Main add handler - sends URL + page text to server
+// Server/App handles ALL parsing via Claude
 async function handleAdd() {
   const apiUrl = getApiUrl();
   
@@ -281,23 +282,34 @@ async function handleAdd() {
   elements.addBtn.innerHTML = '<div class="spinner"></div> Adding...';
 
   try {
-    // Send to server - the main app will handle processing
+    // Get page text from content script (for sites that block server fetching)
+    let pageText = '';
+    let ogImage = '';
+    try {
+      const contentData = await chrome.tabs.sendMessage(currentTab.id, { action: 'getPageData' });
+      if (contentData) {
+        pageText = contentData.pageText || '';
+        ogImage = contentData.ogImage || '';
+      }
+    } catch (e) {
+      console.log('Could not get page text from content script');
+    }
+
+    // Send ONLY URL + page text to server - Claude does ALL the parsing
     await safeFetch(`${apiUrl}/api/add-property`, {
       method: 'POST',
       body: JSON.stringify({
         url: currentTab.url,
-        title: pageData?.title || currentTab.title || 'Property',
-        thumbnail: pageData?.thumbnail || '',
-        tags: selectedTagIds,
-        // Mark as needing processing
-        needsProcessing: true,
+        pageText: pageText,  // Full page text for AI parsing
+        ogImage: ogImage,    // Optional fallback thumbnail
+        tags: selectedTagIds, // User-selected tags only
       }),
     });
 
-    // Save locally
-    await saveAddedProperty(currentTab.url, pageData?.title || currentTab.title);
+    // Save locally (just URL for duplicate detection)
+    await saveAddedProperty(currentTab.url, currentTab.title);
 
-    // Show success - DON'T auto-open the app
+    // Show success
     showSuccess();
 
   } catch (error) {

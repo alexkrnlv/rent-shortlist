@@ -10,6 +10,7 @@ type ToastCallback = (toast: {
   type: 'success' | 'error' | 'info' | 'processing';
   title: string;
   message?: string;
+  duration?: number;
 }) => void;
 
 // Global toast callback - set by the component that renders toasts
@@ -25,26 +26,28 @@ function showToast(toast: Parameters<ToastCallback>[0]) {
   }
 }
 
-interface PendingProperty {
+// Server-processed property from extension
+interface ServerProperty {
   id: string;
   url: string;
   title: string;
   address: string;
   thumbnail: string;
   price?: string;
-  coordinates?: { lat: number; lng: number };
+  coordinates?: { lat: number; lng: number } | null;
   isBTR: boolean;
   tags: string[];
   addedAt: string;
-  needsProcessing?: boolean;
+  processed: boolean;
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  error?: string;
 }
 
 export function useExtensionSync() {
   const { addProperty, properties, tags } = usePropertyStore();
   const { settings } = useSettingsStore();
   const lastSyncedTags = useRef<string>('');
-  const isProcessing = useRef(false);
-  const processingIds = useRef<Set<string>>(new Set());
+  const addedIds = useRef<Set<string>>(new Set());
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const apiUrl = getApiUrl();
@@ -72,50 +75,6 @@ export function useExtensionSync() {
       return pUrl === normalizedUrl;
     });
   }, [properties]);
-
-  // Fetch and parse property details from URL
-  const fetchPropertyDetails = useCallback(async (url: string) => {
-    try {
-      const response = await fetch(`${apiUrl}/api/fetch-property`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch property');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching property details:', error);
-      return null;
-    }
-  }, [apiUrl]);
-
-  // Geocode an address
-  const geocodeAddress = useCallback(async (address: string): Promise<{ lat: number; lng: number } | undefined> => {
-    try {
-      const response = await fetch(`${apiUrl}/api/geocode`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Geocoding failed');
-      }
-      
-      const data = await response.json();
-      if (data.lat && data.lng) {
-        return { lat: data.lat as number, lng: data.lng as number };
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error geocoding:', error);
-      return undefined;
-    }
-  }, [apiUrl]);
 
   // Calculate distances from property to center point
   const calculateDistances = useCallback(async (
@@ -148,166 +107,127 @@ export function useExtensionSync() {
     }
   }, [settings.centerPoint, apiUrl]);
 
-  // Process a single pending property
-  const processProperty = useCallback(async (item: PendingProperty) => {
-    // Skip if already processing
-    if (processingIds.current.has(item.id)) return;
+  // Add a completed property to the store
+  const addCompletedProperty = useCallback(async (serverProp: ServerProperty) => {
+    // Skip if already added to prevent duplicates
+    if (addedIds.current.has(serverProp.id)) {
+      return;
+    }
     
     // Skip if URL already in properties
-    if (isUrlAlreadyAdded(item.url)) {
+    if (isUrlAlreadyAdded(serverProp.url)) {
+      console.log('Property URL already exists, skipping:', serverProp.url);
       // Mark as processed on server
-      await fetch(`${apiUrl}/api/mark-processed`, {
+      fetch(`${apiUrl}/api/mark-processed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id }),
+        body: JSON.stringify({ id: serverProp.id }),
       }).catch(() => {});
       return;
     }
 
-    processingIds.current.add(item.id);
-    console.log('Processing property from extension:', item.url);
+    // Only add properties that have been processed with coordinates
+    if (!serverProp.coordinates) {
+      console.log('Property has no coordinates, skipping:', serverProp.url);
+      return;
+    }
 
+    addedIds.current.add(serverProp.id);
+
+    // Calculate distances if we have a center point
+    const distances = await calculateDistances(serverProp.coordinates);
+
+    // Create property for the store
+    const property: Property = {
+      id: generateId(),
+      url: serverProp.url,
+      name: serverProp.title || 'Property',
+      address: serverProp.address || '',
+      thumbnail: serverProp.thumbnail || '',
+      coordinates: serverProp.coordinates,
+      distances,
+      comment: '',
+      rating: null,
+      price: serverProp.price,
+      isBTR: serverProp.isBTR || false,
+      tags: serverProp.tags || [],
+      createdAt: serverProp.addedAt,
+    };
+
+    addProperty(property);
+    console.log('✅ Property added to store:', property.name);
+
+    // Show success toast
+    showToast({
+      type: 'success',
+      title: 'Property Added!',
+      message: property.name || property.address || 'Added to your shortlist',
+    });
+
+    // Mark as processed on server
+    fetch(`${apiUrl}/api/mark-processed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: serverProp.id }),
+    }).catch(() => {});
+
+  }, [addProperty, isUrlAlreadyAdded, calculateDistances, apiUrl]);
+
+  // Handle property-added event (new property from extension)
+  const handlePropertyAdded = useCallback((serverProp: ServerProperty) => {
+    console.log('🔔 New property from extension:', serverProp.url);
+    
     // Show processing toast
     showToast({
       type: 'processing',
       title: 'Processing Property',
-      message: item.title || 'Fetching property details...',
+      message: 'AI is parsing the listing...',
+      duration: 10000, // Longer duration for processing
     });
 
-    try {
-      let propertyData = {
-        name: item.title || 'Property',
-        address: item.address || '',
-        thumbnail: item.thumbnail || '',
-        price: item.price || '',
-        isBTR: item.isBTR || false,
-      };
-      let coordinates = item.coordinates || undefined;
+    // If already completed with coordinates, add immediately
+    if (serverProp.processingStatus === 'completed' && serverProp.coordinates) {
+      addCompletedProperty(serverProp);
+    }
+    // Otherwise, wait for property-updated event
+  }, [addCompletedProperty]);
 
-      // If server already processed this (background processing), use that data
-      const serverProcessed = (item as any).processingStatus === 'completed';
-      
-      // If property needs processing (from simplified extension) and server didn't do it
-      if ((item.needsProcessing || !item.address) && !serverProcessed) {
-        console.log('Fetching property details from URL...');
-        const fetchedData = await fetchPropertyDetails(item.url);
-        
-        if (fetchedData) {
-          propertyData = {
-            name: fetchedData.name || propertyData.name,
-            address: fetchedData.address || propertyData.address,
-            thumbnail: fetchedData.thumbnail || propertyData.thumbnail,
-            price: fetchedData.price || propertyData.price,
-            isBTR: fetchedData.isBTR || propertyData.isBTR,
-          };
-          console.log('Fetched property details:', propertyData.name, propertyData.address);
-        }
-      }
-
-      // Geocode if we don't have coordinates but have an address
-      if (!coordinates && propertyData.address) {
-        console.log('Geocoding address:', propertyData.address);
-        coordinates = await geocodeAddress(propertyData.address);
-      }
-
-      // If we still don't have coordinates, try geocoding the title/name
-      if (!coordinates && propertyData.name) {
-        // Extract potential location from name
-        const locationMatch = propertyData.name.match(/,?\s*([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d?[A-Z]{0,2})/i);
-        if (locationMatch) {
-          console.log('Trying to geocode from name:', locationMatch[0]);
-          coordinates = await geocodeAddress(locationMatch[0] + ', London');
-        }
-      }
-
-      // Calculate distances if we have coordinates
-      let distances: Property['distances'] = null;
-      if (coordinates) {
-        distances = await calculateDistances(coordinates);
-      }
-
-      // Create and add property even if we don't have coordinates
-      // User can fix it later in the app
-      const property: Property = {
-        id: generateId(),
-        url: item.url,
-        name: propertyData.name,
-        address: propertyData.address,
-        thumbnail: propertyData.thumbnail,
-        coordinates: coordinates || { lat: 51.5074, lng: -0.1278 }, // Default to London center if no coords
-        distances,
-        comment: coordinates ? '' : '⚠️ Location needs verification',
-        rating: null,
-        price: propertyData.price,
-        isBTR: propertyData.isBTR,
-        tags: item.tags || [],
-        createdAt: item.addedAt,
-      };
-
-      addProperty(property);
-      console.log('✅ Property added:', property.name, coordinates ? '' : '(needs location)');
-
-      // Show success toast
-      showToast({
-        type: 'success',
-        title: 'Property Added!',
-        message: property.name || property.address || 'Added to your shortlist',
-      });
-
-      // Mark as processed on server
-      await fetch(`${apiUrl}/api/mark-processed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id }),
-      });
-    } catch (error) {
-      console.error('Error processing extension property:', error);
-      
-      // Show error toast
+  // Handle property-updated event (server finished processing)
+  const handlePropertyUpdated = useCallback((serverProp: ServerProperty) => {
+    console.log('🔔 Property updated:', serverProp.processingStatus, serverProp.title);
+    
+    if (serverProp.processingStatus === 'completed' && serverProp.coordinates) {
+      addCompletedProperty(serverProp);
+    } else if (serverProp.processingStatus === 'failed') {
       showToast({
         type: 'error',
         title: 'Processing Failed',
-        message: 'Could not process property. Try adding it manually.',
+        message: serverProp.error || 'Could not parse property details',
       });
-      
-      // Still mark as processed to avoid infinite retries
-      await fetch(`${apiUrl}/api/mark-processed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id }),
-      }).catch(() => {});
-    } finally {
-      processingIds.current.delete(item.id);
     }
-  }, [addProperty, isUrlAlreadyAdded, fetchPropertyDetails, geocodeAddress, calculateDistances, apiUrl]);
+  }, [addCompletedProperty]);
 
-  // Fetch and process all pending properties
-  const processPendingProperties = useCallback(async () => {
-    if (isProcessing.current) return;
-    isProcessing.current = true;
-
+  // Fetch and process any pending completed properties
+  const syncPendingProperties = useCallback(async () => {
     try {
       const response = await fetch(`${apiUrl}/api/pending-properties`);
-      if (!response.ok) {
-        isProcessing.current = false;
-        return;
-      }
+      if (!response.ok) return;
 
-      const pending: PendingProperty[] = await response.json();
-
-      for (const item of pending) {
-        await processProperty(item);
+      const pending: ServerProperty[] = await response.json();
+      
+      // Add any completed properties that we haven't added yet
+      for (const prop of pending) {
+        if (prop.processingStatus === 'completed' && prop.coordinates) {
+          await addCompletedProperty(prop);
+        }
       }
     } catch (error) {
-      // Silently fail - server might not be running
-    } finally {
-      isProcessing.current = false;
+      // Silently fail
     }
-  }, [processProperty, apiUrl]);
+  }, [addCompletedProperty, apiUrl]);
 
   // Set up Server-Sent Events for real-time updates
   useEffect(() => {
-    // Connect to SSE endpoint
     const connectSSE = () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -319,18 +239,14 @@ export function useExtensionSync() {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          
           if (data.type === 'property-added') {
-            // New property from extension - process it
-            console.log('🔔 SSE: New property received from extension');
-            processProperty(data.property);
+            handlePropertyAdded(data.property);
           } else if (data.type === 'property-updated') {
-            // Server finished background processing - use the updated data
-            console.log('🔔 SSE: Property updated by server background processing');
-            const prop = data.property;
-            if (prop.processingStatus === 'completed' && prop.coordinates) {
-              // Server successfully processed - just add it directly
-              processProperty({ ...prop, needsProcessing: false });
-            }
+            handlePropertyUpdated(data.property);
+          } else if (data.type === 'property-processing') {
+            // Just a status update, could show in UI
+            console.log('Property processing status:', data.propertyId, data.status);
           }
         } catch (e) {
           console.log('SSE parse error:', e);
@@ -338,7 +254,6 @@ export function useExtensionSync() {
       };
 
       eventSource.onerror = () => {
-        // Reconnect after a delay
         eventSource.close();
         setTimeout(connectSSE, 5000);
       };
@@ -346,11 +261,11 @@ export function useExtensionSync() {
 
     connectSSE();
 
-    // Initial check for pending properties
-    processPendingProperties();
+    // Initial sync of any pending completed properties
+    syncPendingProperties();
 
-    // Also poll every 10 seconds as a fallback
-    const interval = setInterval(processPendingProperties, 10000);
+    // Poll every 30 seconds as a fallback
+    const interval = setInterval(syncPendingProperties, 30000);
 
     return () => {
       if (eventSourceRef.current) {
@@ -358,7 +273,7 @@ export function useExtensionSync() {
       }
       clearInterval(interval);
     };
-  }, [processPendingProperties, processProperty, apiUrl]);
+  }, [handlePropertyAdded, handlePropertyUpdated, syncPendingProperties, apiUrl]);
 }
 
 // Calculate direct distance in km using Haversine formula
@@ -366,7 +281,7 @@ function calculateDirectDistance(
   point1: { lat: number; lng: number },
   point2: { lat: number; lng: number }
 ): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = toRad(point2.lat - point1.lat);
   const dLon = toRad(point2.lng - point1.lng);
   const a =

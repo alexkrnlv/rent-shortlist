@@ -182,10 +182,13 @@ export function useExtensionSync() {
         price: item.price || '',
         isBTR: item.isBTR || false,
       };
-      let coordinates = item.coordinates;
+      let coordinates = item.coordinates || undefined;
 
-      // If property needs processing (from simplified extension), fetch details
-      if (item.needsProcessing || !item.address) {
+      // If server already processed this (background processing), use that data
+      const serverProcessed = (item as any).processingStatus === 'completed';
+      
+      // If property needs processing (from simplified extension) and server didn't do it
+      if ((item.needsProcessing || !item.address) && !serverProcessed) {
         console.log('Fetching property details from URL...');
         const fetchedData = await fetchPropertyDetails(item.url);
         
@@ -317,9 +320,17 @@ export function useExtensionSync() {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'property-added') {
-            // Process the new property immediately
+            // New property from extension - process it
             console.log('🔔 SSE: New property received from extension');
             processProperty(data.property);
+          } else if (data.type === 'property-updated') {
+            // Server finished background processing - use the updated data
+            console.log('🔔 SSE: Property updated by server background processing');
+            const prop = data.property;
+            if (prop.processingStatus === 'completed' && prop.coordinates) {
+              // Server successfully processed - just add it directly
+              processProperty({ ...prop, needsProcessing: false });
+            }
           }
         } catch (e) {
           console.log('SSE parse error:', e);

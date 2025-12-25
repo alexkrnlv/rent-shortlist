@@ -1258,19 +1258,96 @@ app.post('/api/distances', async (req, res) => {
   }
 });
 
-// In-memory storage for properties added via Chrome extension
-// In production, you'd use a database
-const extensionProperties: Array<{
+// ============================================
+// Extension Property Storage (Redis-backed)
+// ============================================
+
+interface ExtensionProperty {
   id: string;
   url: string;
   title: string;
   address: string;
   thumbnail: string;
+  price: string;
+  coordinates: { lat: number; lng: number } | null;
   isBTR: boolean;
   tags: string[];
   addedAt: string;
   processed: boolean;
-}> = [];
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  error?: string;
+}
+
+// In-memory fallback
+const memoryPropertyStore: ExtensionProperty[] = [];
+
+// Property storage abstraction - uses Redis if available
+const propertyStorage = {
+  async getAll(): Promise<ExtensionProperty[]> {
+    if (redis) {
+      const keys = await redis.keys('property:*');
+      if (keys.length === 0) return [];
+      const values = await redis.mget(keys);
+      return values
+        .filter((v): v is string => v !== null)
+        .map(v => JSON.parse(v) as ExtensionProperty);
+    }
+    return [...memoryPropertyStore];
+  },
+
+  async getPending(): Promise<ExtensionProperty[]> {
+    const all = await this.getAll();
+    return all.filter(p => !p.processed);
+  },
+
+  async get(id: string): Promise<ExtensionProperty | null> {
+    if (redis) {
+      const data = await redis.get(`property:${id}`);
+      return data ? JSON.parse(data) : null;
+    }
+    return memoryPropertyStore.find(p => p.id === id) || null;
+  },
+
+  async add(property: ExtensionProperty): Promise<void> {
+    if (redis) {
+      // Store with 30-day expiration
+      await redis.set(`property:${property.id}`, JSON.stringify(property), 'EX', 30 * 24 * 60 * 60);
+    } else {
+      memoryPropertyStore.push(property);
+    }
+  },
+
+  async update(id: string, updates: Partial<ExtensionProperty>): Promise<void> {
+    const property = await this.get(id);
+    if (property) {
+      const updated = { ...property, ...updates };
+      if (redis) {
+        await redis.set(`property:${id}`, JSON.stringify(updated), 'EX', 30 * 24 * 60 * 60);
+      } else {
+        const idx = memoryPropertyStore.findIndex(p => p.id === id);
+        if (idx >= 0) memoryPropertyStore[idx] = updated;
+      }
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    if (redis) {
+      await redis.del(`property:${id}`);
+    } else {
+      const idx = memoryPropertyStore.findIndex(p => p.id === id);
+      if (idx >= 0) memoryPropertyStore.splice(idx, 1);
+    }
+  },
+
+  async clear(): Promise<void> {
+    if (redis) {
+      const keys = await redis.keys('property:*');
+      if (keys.length > 0) await redis.del(...keys);
+    } else {
+      memoryPropertyStore.length = 0;
+    }
+  },
+};
 
 // In-memory storage for tags (synced from main app)
 interface PropertyTag {
@@ -1279,6 +1356,124 @@ interface PropertyTag {
   color: string;
 }
 let storedTags: PropertyTag[] = [];
+
+// ============================================
+// Background Property Processing
+// ============================================
+
+async function processPropertyInBackground(property: ExtensionProperty): Promise<void> {
+  console.log(`🔄 Background processing: ${property.url}`);
+  
+  try {
+    await propertyStorage.update(property.id, { processingStatus: 'processing' });
+
+    // Fetch and parse property
+    const claudeApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!claudeApiKey) {
+      throw new Error('No Claude API key available for background processing');
+    }
+
+    // Use fetch with User-Agent to get page content
+    const response = await fetch(property.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+
+    if (!response.ok) {
+      // Some sites block server-side fetching - mark for app processing
+      console.log(`⚠️ Could not fetch ${property.url} (${response.status}) - will be processed by app`);
+      await propertyStorage.update(property.id, { 
+        processingStatus: 'pending',
+        error: `Fetch failed: ${response.status}`,
+      });
+      return;
+    }
+
+    const html = await response.text();
+
+    // Prepare content for AI
+    const preparedContent = prepareHtmlForAI(html, property.url);
+    
+    // Call Claude for extraction
+    const anthropic = new Anthropic({ apiKey: claudeApiKey });
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [{
+        role: 'user',
+        content: `Extract property details from this UK rental listing. Return JSON only:
+{
+  "name": "property title",
+  "address": "full address with postcode",
+  "price": "monthly rent",
+  "isBTR": true/false (Build to Rent development)
+}
+
+URL: ${property.url}
+Content:
+${preparedContent.substring(0, 50000)}`,
+      }],
+    });
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      throw new Error('Could not parse AI response');
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    // Geocode the address
+    let coordinates: { lat: number; lng: number } | null = null;
+    if (parsed.address) {
+      const geocodeKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (geocodeKey) {
+        const geoResponse = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsed.address)}&key=${geocodeKey}`
+        );
+        const geoData = await geoResponse.json();
+        if (geoData.results?.[0]?.geometry?.location) {
+          coordinates = {
+            lat: geoData.results[0].geometry.location.lat,
+            lng: geoData.results[0].geometry.location.lng,
+          };
+        }
+      }
+    }
+
+    // Update property with parsed data
+    await propertyStorage.update(property.id, {
+      title: parsed.name || property.title,
+      address: parsed.address || property.address,
+      price: parsed.price || property.price,
+      isBTR: parsed.isBTR || property.isBTR,
+      coordinates,
+      processingStatus: 'completed',
+      error: undefined,
+    });
+
+    console.log(`✅ Background processing complete: ${parsed.name || property.url}`);
+
+    // Broadcast update to connected clients
+    const updatedProperty = await propertyStorage.get(property.id);
+    if (updatedProperty) {
+      broadcastToClients({
+        type: 'property-updated',
+        property: updatedProperty,
+      });
+    }
+
+  } catch (error) {
+    console.error(`❌ Background processing failed for ${property.url}:`, error);
+    await propertyStorage.update(property.id, {
+      processingStatus: 'failed',
+      error: (error as Error).message,
+    });
+  }
+}
 
 // Get tags (for extension to fetch available tags)
 app.get('/api/tags', (req, res) => {
@@ -1303,7 +1498,7 @@ app.post('/api/add-property', async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    const property = {
+    const property: ExtensionProperty = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2),
       url,
       title: title || 'Property',
@@ -1315,21 +1510,28 @@ app.post('/api/add-property', async (req, res) => {
       tags: tags || [],
       addedAt: new Date().toISOString(),
       processed: false,
-      needsProcessing: needsProcessing || false, // Flag for app to process this
+      processingStatus: 'pending',
     };
 
-    extensionProperties.push(property);
+    // Save to Redis/memory immediately
+    await propertyStorage.add(property);
 
-    console.log('Property added from extension:', property.url, needsProcessing ? '(needs processing)' : '');
+    console.log('📥 Property added from extension:', property.url);
 
     // Broadcast to all connected clients for real-time update
-    // The main app will pick this up and process it
     broadcastToClients({
       type: 'property-added',
       property,
     });
 
-    res.json({ success: true, property });
+    // Start background processing (non-blocking)
+    if (needsProcessing) {
+      processPropertyInBackground(property).catch(err => {
+        console.error('Background processing error:', err);
+      });
+    }
+
+    res.json({ success: true, property, storage: redis ? 'redis' : 'memory' });
   } catch (error) {
     console.error('Error adding property:', error);
     res.status(500).json({ error: (error as Error).message });
@@ -1337,25 +1539,63 @@ app.post('/api/add-property', async (req, res) => {
 });
 
 // Get pending properties from Chrome extension
-app.get('/api/pending-properties', (req, res) => {
-  const pending = extensionProperties.filter(p => !p.processed);
-  res.json(pending);
+app.get('/api/pending-properties', async (req, res) => {
+  try {
+    const pending = await propertyStorage.getPending();
+    res.json(pending);
+  } catch (error) {
+    console.error('Error getting pending properties:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get all extension properties (for debugging/admin)
+app.get('/api/extension-properties', async (req, res) => {
+  try {
+    const all = await propertyStorage.getAll();
+    res.json({ 
+      count: all.length, 
+      properties: all,
+      storage: redis ? 'redis' : 'memory',
+    });
+  } catch (error) {
+    console.error('Error getting extension properties:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
 // Mark property as processed
-app.post('/api/mark-processed', (req, res) => {
-  const { id } = req.body;
-  const property = extensionProperties.find(p => p.id === id);
-  if (property) {
-    property.processed = true;
+app.post('/api/mark-processed', async (req, res) => {
+  try {
+    const { id } = req.body;
+    await propertyStorage.update(id, { processed: true });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking processed:', error);
+    res.status(500).json({ error: (error as Error).message });
   }
-  res.json({ success: true });
+});
+
+// Delete a specific property
+app.delete('/api/extension-properties/:id', async (req, res) => {
+  try {
+    await propertyStorage.delete(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting property:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
 // Clear all pending properties
-app.delete('/api/pending-properties', (req, res) => {
-  extensionProperties.length = 0;
-  res.json({ success: true });
+app.delete('/api/pending-properties', async (req, res) => {
+  try {
+    await propertyStorage.clear();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing properties:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
 // NEW: Parse property from extracted page content (bypasses anti-scraping)

@@ -2,12 +2,27 @@ import { SearchBar } from './SearchBar';
 import { Filters } from './Filters';
 import { PropertyList } from './PropertyList';
 import { Plus } from 'lucide-react';
+import { useMobileDetect } from '../../hooks/useMobileDetect';
 
 interface SidebarProps {
   onAddClick: () => void;
 }
 
 export function Sidebar({ onAddClick }: SidebarProps) {
+  const isMobile = useMobileDetect();
+
+  // Mobile version - used inside bottom sheet, no add button (FAB handles that)
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full">
+        <SearchBar />
+        <Filters />
+        <PropertyList />
+      </div>
+    );
+  }
+
+  // Desktop version
   return (
     <>
       {/* Add Property Button */}

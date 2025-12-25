@@ -136,6 +136,12 @@ function App() {
         isMobileSidebarOpen={isMobileSidebarOpen}
         onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         onMobileSidebarClose={() => setIsMobileSidebarOpen(false)}
+        // Mobile-specific props
+        onViewModeChange={setViewMode}
+        onSettingsClick={() => setShowSettingsModal(true)}
+        onShareClick={handleShare}
+        onAddPropertyClick={() => setShowAddModal(true)}
+        propertyCount={properties.length}
         header={
           <Header
             onSettingsClick={() => setShowSettingsModal(true)}

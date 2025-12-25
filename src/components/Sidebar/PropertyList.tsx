@@ -1,5 +1,6 @@
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useMobileDetect } from '../../hooks/useMobileDetect';
 import { PropertyCard } from './PropertyCard';
 import { PendingPropertyCard } from './PendingPropertyCard';
 import { MapPin } from 'lucide-react';
@@ -8,6 +9,7 @@ import { useEffect, useRef } from 'react';
 export function PropertyList() {
   const { getFilteredProperties, selectedPropertyId, setSelectedProperty, updateProperty, removeProperty, tags, addTagToProperty, removeTagFromProperty, pendingProperties, removePendingProperty } = usePropertyStore();
   const { settings } = useSettingsStore();
+  const isMobile = useMobileDetect();
   const properties = getFilteredProperties();
   const propertyRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -96,18 +98,27 @@ export function PropertyList() {
 
   if (!hasPending && !hasProperties) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className={`flex-1 flex items-center justify-center ${isMobile ? 'p-6' : 'p-8'}`}>
         <div className="text-center">
-          <MapPin size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No properties yet</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Click "Add Property" button above to get started</p>
+          <div className={`mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${isMobile ? 'w-16 h-16' : 'w-14 h-14'}`}>
+            <MapPin size={isMobile ? 32 : 28} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <h3 className={`font-medium text-gray-700 dark:text-gray-300 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            No properties yet
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {isMobile 
+              ? 'Tap the + button to add your first property' 
+              : 'Click "Add Property" button above to get started'
+            }
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
+    <div className={`flex-1 overflow-y-auto overscroll-contain ${isMobile ? 'px-3 py-2' : 'p-4'} space-y-3`}>
       {/* Pending properties (being processed) - shown first */}
       {pendingProperties.map((pending) => (
         <PendingPropertyCard

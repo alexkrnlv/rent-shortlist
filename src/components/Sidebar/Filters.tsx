@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, RotateCcw, ArrowUpDown, Building2, Tag, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, RotateCcw, ArrowUpDown, Building2, Tag, Plus, X, SlidersHorizontal } from 'lucide-react';
 import { usePropertyStore } from '../../store/usePropertyStore';
+import { useMobileDetect } from '../../hooks/useMobileDetect';
 import { Button } from '../ui/Button';
 import { StarRating } from '../ui/StarRating';
 import type { SortField } from '../../types';
@@ -18,11 +19,15 @@ const TAG_COLORS = [
 ];
 
 export function Filters() {
+  const isMobile = useMobileDetect();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
   const { filters, setFilters, resetFilters, tags, addTag, removeTag } = usePropertyStore();
+  
+  const hasActiveFilters = filters.btrOnly || filters.minRating || filters.maxDistance || 
+    filters.minPrice || filters.maxPrice || (filters.selectedTags && filters.selectedTags.length > 0);
 
   const toggleSortDirection = () => {
     setFilters({ sortDirection: filters.sortDirection === 'asc' ? 'desc' : 'asc' });
@@ -52,10 +57,21 @@ export function Filters() {
     <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 md:py-2 flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors min-h-[44px] md:min-h-0"
+        className={`
+          w-full px-4 flex items-center justify-between text-sm font-medium 
+          text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 
+          transition-colors active:bg-gray-100 dark:active:bg-gray-700
+          ${isMobile ? 'py-3.5 min-h-[52px]' : 'py-2'}
+        `}
       >
-        <span>Filters & Sort</span>
-        {isExpanded ? <ChevronUp size={18} className="md:w-4 md:h-4" /> : <ChevronDown size={18} className="md:w-4 md:h-4" />}
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal size={isMobile ? 18 : 16} className="text-gray-500 dark:text-gray-400" />
+          <span>Filters & Sort</span>
+          {hasActiveFilters && (
+            <span className="w-2 h-2 bg-primary-500 rounded-full" />
+          )}
+        </div>
+        {isExpanded ? <ChevronUp size={isMobile ? 20 : 16} /> : <ChevronDown size={isMobile ? 20 : 16} />}
       </button>
 
       {isExpanded && (

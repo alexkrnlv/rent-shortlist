@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, OverlayView } from '@react-google-maps/api';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
+import { useMobileDetect } from '../../hooks/useMobileDetect';
 import type { Property } from '../../types';
 import { MapPin, Navigation, Car, PersonStanding, Train, X } from 'lucide-react';
 import { StarRating } from '../ui/StarRating';
@@ -38,13 +39,17 @@ const darkMapStyles: google.maps.MapTypeStyle[] = [
   { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
 ];
 
-const getMapOptions = (isDark: boolean): google.maps.MapOptions => ({
+const getMapOptions = (isDark: boolean, isMobile: boolean): google.maps.MapOptions => ({
   disableDefaultUI: false,
-  zoomControl: true,
+  zoomControl: !isMobile, // Hide on mobile - use pinch instead
   mapTypeControl: false,
   streetViewControl: false,
-  fullscreenControl: true,
+  fullscreenControl: !isMobile, // Hide on mobile
   styles: isDark ? darkMapStyles : lightMapStyles,
+  // Cooperative mode requires two fingers to pan on mobile
+  gestureHandling: isMobile ? 'cooperative' : 'greedy',
+  // Disable keyboard shortcuts on mobile
+  keyboardShortcuts: !isMobile,
 });
 
 interface PropertyMarkerProps {
@@ -227,6 +232,7 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
 export function MapView() {
   const { settings } = useSettingsStore();
   const { getFilteredProperties, selectedPropertyId, setSelectedProperty, getPropertyById } = usePropertyStore();
+  const isMobile = useMobileDetect();
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -375,7 +381,7 @@ export function MapView() {
         mapContainerStyle={mapContainerStyle}
         center={settings.centerPoint}
         zoom={12}
-        options={getMapOptions(isDarkMode)}
+        options={getMapOptions(isDarkMode, isMobile)}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onClick={handleMapClick}
@@ -385,11 +391,11 @@ export function MapView() {
           position={settings.centerPoint}
           icon={{
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 12,
+            scale: isMobile ? 10 : 12,
             fillColor: '#F59E0B',
             fillOpacity: 1,
             strokeColor: '#FFFFFF',
-            strokeWeight: 3,
+            strokeWeight: isMobile ? 2 : 3,
           }}
           title={settings.centerPoint.name}
         />
@@ -413,47 +419,71 @@ export function MapView() {
         )}
       </GoogleMap>
 
-      {/* Map Controls Overlay */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+      {/* Map Controls Overlay - repositioned for mobile */}
+      <div className={`
+        absolute z-10 flex flex-col gap-2
+        ${isMobile 
+          ? 'bottom-[calc(15vh+80px)] left-3' 
+          : 'top-4 right-4'
+        }
+      `}>
         {/* Map Type Toggle */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <button
             onClick={() => setMapType('roadmap')}
-            className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors ${
-              mapType === 'roadmap'
+            className={`
+              block w-full text-sm font-medium text-left transition-colors
+              ${isMobile ? 'px-3 py-2.5 min-h-[44px]' : 'px-4 py-2'}
+              ${mapType === 'roadmap'
                 ? 'bg-primary-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
+              }
+            `}
             title="Road Map"
           >
-            🗺️ Map
+            🗺️ {isMobile ? '' : 'Map'}
           </button>
           <button
             onClick={() => setMapType('satellite')}
-            className={`block w-full px-4 py-2 text-sm font-medium text-left transition-colors border-t border-gray-200 dark:border-gray-700 ${
-              mapType === 'satellite'
+            className={`
+              block w-full text-sm font-medium text-left transition-colors border-t border-gray-200 dark:border-gray-700
+              ${isMobile ? 'px-3 py-2.5 min-h-[44px]' : 'px-4 py-2'}
+              ${mapType === 'satellite'
                 ? 'bg-primary-700 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
+              }
+            `}
             title="Satellite View"
           >
-            🛰️ Satellite
+            🛰️ {isMobile ? '' : 'Satellite'}
           </button>
         </div>
 
         {/* Transit Layer Toggle */}
         <button
           onClick={() => setShowTransit(!showTransit)}
-          className={`px-4 py-2 text-sm font-medium rounded-lg shadow-lg border transition-colors ${
-            showTransit
+          className={`
+            text-sm font-medium rounded-lg shadow-lg border transition-colors
+            ${isMobile ? 'px-3 py-2.5 min-h-[44px] min-w-[44px]' : 'px-4 py-2'}
+            ${showTransit
               ? 'bg-primary-700 text-white border-primary-700'
               : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
+            }
+          `}
           title="Toggle Public Transport"
         >
-          🚇 Transit
+          🚇 {isMobile ? '' : 'Transit'}
         </button>
       </div>
+
+      {/* Mobile gesture hint - shows briefly on first load */}
+      {isMobile && mapReady && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none gesture-hint">
+          <div className="px-3 py-1.5 bg-black/70 text-white text-xs rounded-full backdrop-blur-sm">
+            Use two fingers to move map
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -356,3 +356,265 @@ html.dark body {
 .tutorial-progress-bar {
   animation: progressGrow 0.3s ease-out;
 }
+
+/* ==========================================
+   MOBILE UX OVERHAUL
+   ========================================== */
+
+/* Map container - prevent gesture conflicts on mobile */
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* On mobile, require cooperative gestures for map panning */
+@media (max-width: 768px) {
+  .map-container {
+    /* Allow vertical scrolling but prevent horizontal swipe from panning map */
+    touch-action: pan-y pinch-zoom;
+  }
+  
+  /* Google Maps specific overrides */
+  .map-container .gm-style {
+    touch-action: pan-y pinch-zoom !important;
+  }
+  
+  /* Ensure map can still be interacted with via pinch */
+  .map-container iframe,
+  .map-container canvas {
+    touch-action: manipulation;
+  }
+}
+
+/* Safe area insets for notched devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Mobile header compact styling */
+@media (max-width: 768px) {
+  .mobile-header {
+    height: 56px;
+    padding: 0 12px;
+  }
+  
+  .mobile-header h1 {
+    font-size: 1rem;
+  }
+}
+
+/* Bottom sheet animations */
+@keyframes slideUpSheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownSheet {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.bottom-sheet-enter {
+  animation: slideUpSheet 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.bottom-sheet-exit {
+  animation: slideDownSheet 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* Bottom sheet spring animation for snapping */
+.bottom-sheet-snap {
+  transition: height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Mobile modal - slide up from bottom */
+@media (max-width: 768px) {
+  .mobile-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 0;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .dark .mobile-modal {
+    background: #1f2937;
+  }
+  
+  .mobile-modal-enter {
+    animation: slideUpSheet 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+  
+  .mobile-modal-exit {
+    animation: slideDownSheet 0.2s ease-in forwards;
+  }
+}
+
+/* Touch feedback for mobile */
+@media (max-width: 768px) {
+  .touch-feedback {
+    transition: transform 0.1s ease, background-color 0.1s ease;
+  }
+  
+  .touch-feedback:active {
+    transform: scale(0.97);
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .dark .touch-feedback:active {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Floating action button styling */
+.fab {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #1d4ed8;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 30;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fab:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Property card mobile optimizations */
+@media (max-width: 768px) {
+  .property-card-mobile {
+    padding: 12px;
+    margin: 0 12px 12px;
+    border-radius: 16px;
+  }
+  
+  /* Larger touch targets */
+  .property-card-mobile button,
+  .property-card-mobile a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Star rating mobile size */
+  .star-rating-mobile .star {
+    width: 32px;
+    height: 32px;
+    padding: 4px;
+  }
+}
+
+/* Hide scrollbar on mobile bottom sheet */
+@media (max-width: 768px) {
+  .bottom-sheet-content::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .bottom-sheet-content {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Prevent rubber-band scrolling on iOS */
+@media (max-width: 768px) {
+  .no-bounce {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+  }
+}
+
+/* Mobile list item with swipe hint */
+.swipe-hint {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-hint::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to left, rgba(0,0,0,0.1), transparent);
+}
+
+/* Gesture hint animation - fade out after 3 seconds */
+@keyframes gestureHintFade {
+  0%, 70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.gesture-hint {
+  animation: gestureHintFade 4s ease-out forwards;
+}
+
+/* Active states for mobile */
+@media (max-width: 768px) {
+  .active-scale:active {
+    transform: scale(0.97);
+  }
+  
+  .active-opacity:active {
+    opacity: 0.7;
+  }
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Fix 100vh issue on iOS Safari */
+  .h-screen {
+    height: -webkit-fill-available;
+  }
+  
+  /* Prevent pull-to-refresh on some elements */
+  .no-pull-refresh {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet-enter,
+  .bottom-sheet-exit,
+  .mobile-modal-enter,
+  .mobile-modal-exit,
+  .bottom-sheet-snap,
+  .touch-feedback,
+  .fab,
+  .gesture-hint {
+    animation: none;
+    transition: none;
+  }
+}

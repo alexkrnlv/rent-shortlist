@@ -1,5 +1,6 @@
-import { Settings, Download, Upload, Share2, Menu, X, FolderPlus, Map, Table2, Sun, Moon, Monitor } from 'lucide-react';
+import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useMobileDetect } from '../../hooks/useMobileDetect';
 import type { ThemeMode } from '../../types';
 import { Button } from '../ui/Button';
 
@@ -27,10 +28,9 @@ export function Header({
   propertyCount,
   viewMode,
   onViewModeChange,
-  onMobileSidebarToggle,
-  isMobileSidebarOpen,
 }: HeaderProps) {
   const { settings, setThemeMode } = useSettingsStore();
+  const isMobile = useMobileDetect();
 
   const cycleTheme = () => {
     const modes: ThemeMode[] = ['light', 'dark', 'auto'];
@@ -61,21 +61,44 @@ export function Header({
     }
   };
 
+  // Compact mobile header - navigation is in bottom bar
+  if (isMobile) {
+    return (
+      <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 flex items-center shadow-sm safe-area-top">
+        {/* Logo & Title */}
+        <div className="flex items-center gap-2.5 flex-1">
+          <div className="w-9 h-9 bg-primary-700 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">Rent Shortlist</h1>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{propertyCount} properties</p>
+          </div>
+        </div>
+
+        {/* Right: Theme toggle only - other actions in bottom nav or settings */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={cycleTheme}
+            className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+            title={`Theme: ${getThemeLabel()}`}
+            aria-label={`Theme: ${getThemeLabel()}`}
+          >
+            {getThemeIcon()}
+          </button>
+        </div>
+      </header>
+    );
+  }
+
+  // Desktop header - full functionality
   return (
     <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center shadow-sm">
       {/* Left Section: Logo & Title */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        {/* Mobile sidebar toggle button - only show in map mode on mobile */}
-        {viewMode === 'map' && (
-          <button
-            onClick={onMobileSidebarToggle}
-            className="md:hidden p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-            title={isMobileSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-            aria-label={isMobileSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-          >
-            {isMobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        )}
         <div className="w-10 h-10 bg-primary-700 rounded-xl flex items-center justify-center">
           <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
@@ -90,8 +113,7 @@ export function Header({
 
       {/* Center Section: View Mode Toggle */}
       <div className="flex-1 flex justify-center px-4">
-        {/* Desktop View Toggle */}
-        <div className="hidden sm:flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 shadow-sm">
+        <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 shadow-sm">
           <button
             onClick={() => onViewModeChange('map')}
             className={`
@@ -121,17 +143,6 @@ export function Header({
             <span>Table</span>
           </button>
         </div>
-
-        {/* Mobile View Toggle */}
-        <div className="sm:hidden">
-          <button
-            onClick={() => onViewModeChange(viewMode === 'map' ? 'table' : 'map')}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-sm"
-            title={viewMode === 'map' ? 'Switch to Table View' : 'Switch to Map View'}
-          >
-            {viewMode === 'map' ? <Table2 size={20} /> : <Map size={20} />}
-          </button>
-        </div>
       </div>
 
       {/* Right Section: Actions */}
@@ -152,7 +163,7 @@ export function Header({
           <Share2 size={18} className="mr-1.5" />
           Share
         </Button>
-        {/* Mobile Import/Export/Share */}
+        {/* Tablet-only icons */}
         <Button variant="ghost" size="sm" onClick={onImportClick} className="lg:hidden p-2">
           <Upload size={18} />
         </Button>

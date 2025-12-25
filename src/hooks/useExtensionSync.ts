@@ -94,7 +94,7 @@ export function useExtensionSync() {
   }, [apiUrl]);
 
   // Geocode an address
-  const geocodeAddress = useCallback(async (address: string) => {
+  const geocodeAddress = useCallback(async (address: string): Promise<{ lat: number; lng: number } | undefined> => {
     try {
       const response = await fetch(`${apiUrl}/api/geocode`, {
         method: 'POST',
@@ -108,12 +108,12 @@ export function useExtensionSync() {
       
       const data = await response.json();
       if (data.lat && data.lng) {
-        return { lat: data.lat, lng: data.lng };
+        return { lat: data.lat as number, lng: data.lng as number };
       }
-      return null;
+      return undefined;
     } catch (error) {
       console.error('Error geocoding:', error);
-      return null;
+      return undefined;
     }
   }, [apiUrl]);
 

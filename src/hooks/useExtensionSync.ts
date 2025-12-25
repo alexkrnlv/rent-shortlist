@@ -5,6 +5,26 @@ import { generateId } from '../utils/helpers';
 import { getApiUrl } from '../utils/api';
 import type { Property } from '../types';
 
+// Toast notification callback type
+type ToastCallback = (toast: {
+  type: 'success' | 'error' | 'info' | 'processing';
+  title: string;
+  message?: string;
+}) => void;
+
+// Global toast callback - set by the component that renders toasts
+let globalToastCallback: ToastCallback | null = null;
+
+export function setToastCallback(callback: ToastCallback | null) {
+  globalToastCallback = callback;
+}
+
+function showToast(toast: Parameters<ToastCallback>[0]) {
+  if (globalToastCallback) {
+    globalToastCallback(toast);
+  }
+}
+
 interface PendingProperty {
   id: string;
   url: string;
@@ -147,6 +167,13 @@ export function useExtensionSync() {
     processingIds.current.add(item.id);
     console.log('Processing property from extension:', item.url);
 
+    // Show processing toast
+    showToast({
+      type: 'processing',
+      title: 'Processing Property',
+      message: item.title || 'Fetching property details...',
+    });
+
     try {
       let propertyData = {
         name: item.title || 'Property',
@@ -217,6 +244,13 @@ export function useExtensionSync() {
       addProperty(property);
       console.log('✅ Property added:', property.name, coordinates ? '' : '(needs location)');
 
+      // Show success toast
+      showToast({
+        type: 'success',
+        title: 'Property Added!',
+        message: property.name || property.address || 'Added to your shortlist',
+      });
+
       // Mark as processed on server
       await fetch(`${apiUrl}/api/mark-processed`, {
         method: 'POST',
@@ -225,6 +259,14 @@ export function useExtensionSync() {
       });
     } catch (error) {
       console.error('Error processing extension property:', error);
+      
+      // Show error toast
+      showToast({
+        type: 'error',
+        title: 'Processing Failed',
+        message: 'Could not process property. Try adding it manually.',
+      });
+      
       // Still mark as processed to avoid infinite retries
       await fetch(`${apiUrl}/api/mark-processed`, {
         method: 'POST',

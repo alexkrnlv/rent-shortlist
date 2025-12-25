@@ -8,13 +8,24 @@ import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
 import { Tutorial } from './components/Tutorial';
+import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
 import { useTutorialStore } from './store/useTutorialStore';
-import { useExtensionSync } from './hooks/useExtensionSync';
+import { useExtensionSync, setToastCallback } from './hooks/useExtensionSync';
+import { useToast } from './components/ui/Toast';
 import { useUrlSession } from './hooks/useUrlSession';
 import { hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
 
 function App() {
+  // Toast notifications
+  const { addToast } = useToast();
+  
+  // Connect toast callback for extension sync
+  useEffect(() => {
+    setToastCallback(addToast);
+    return () => setToastCallback(null);
+  }, [addToast]);
+
   // Sync with Chrome extension
   useExtensionSync();
   
@@ -127,4 +138,12 @@ function App() {
   );
 }
 
-export default App;
+function AppWithProviders() {
+  return (
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+  );
+}
+
+export default AppWithProviders;

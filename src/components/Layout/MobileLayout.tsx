@@ -66,7 +66,7 @@ export function MobileLayout({
         {viewMode === 'map' ? (
           <>
             {/* Full-screen Map */}
-            <div className="absolute inset-0 map-container">
+            <div className="absolute inset-0">
               {map}
             </div>
 

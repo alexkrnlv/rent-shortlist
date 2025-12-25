@@ -46,8 +46,8 @@ const getMapOptions = (isDark: boolean, isMobile: boolean): google.maps.MapOptio
   streetViewControl: false,
   fullscreenControl: !isMobile, // Hide on mobile
   styles: isDark ? darkMapStyles : lightMapStyles,
-  // Cooperative mode requires two fingers to pan on mobile
-  gestureHandling: isMobile ? 'cooperative' : 'greedy',
+  // Use greedy for single-finger panning - bottom sheet handles swipe-up
+  gestureHandling: 'greedy',
   // Disable keyboard shortcuts on mobile
   keyboardShortcuts: !isMobile,
 });
@@ -476,14 +476,6 @@ export function MapView() {
         </button>
       </div>
 
-      {/* Mobile gesture hint - shows briefly on first load */}
-      {isMobile && mapReady && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none gesture-hint">
-          <div className="px-3 py-1.5 bg-black/70 text-white text-xs rounded-full backdrop-blur-sm">
-            Use two fingers to move map
-          </div>
-        </div>
-      )}
     </div>
   );
 }

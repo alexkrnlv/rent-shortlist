@@ -13,9 +13,9 @@ interface BottomSheetProps {
 
 // Snap point heights as percentage of viewport
 const SNAP_HEIGHTS: Record<SnapPoint, number> = {
-  peek: 15,
-  half: 50,
-  full: 90,
+  peek: 18,
+  half: 55,
+  full: 92,
 };
 
 // Bottom navigation height + safe area
@@ -30,6 +30,7 @@ export function BottomSheet({
   className = '',
 }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(0);
   const isDragging = useRef(false);
@@ -52,7 +53,7 @@ export function BottomSheet({
     const snapPoints: SnapPoint[] = ['peek', 'half', 'full'];
     
     // If velocity is high enough, snap in direction of movement
-    if (Math.abs(velocity) > 0.5) {
+    if (Math.abs(velocity) > 0.3) {
       if (velocity > 0) {
         // Moving down (closing)
         const currentIndex = snapPoints.indexOf(currentSnap);
@@ -86,7 +87,7 @@ export function BottomSheet({
     onSnapChange?.(snap);
   }, [onSnapChange]);
 
-  // Handle touch start
+  // Handle touch start on drag handle
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     dragStartY.current = touch.clientY;
@@ -135,13 +136,16 @@ export function BottomSheet({
     snapTo(nearestSnap);
   }, [sheetHeight, getNearestSnap, snapTo]);
 
-  // Handle drag handle click to cycle snaps
-  const handleDragHandleClick = useCallback(() => {
+  // Handle drag handle tap to cycle snaps
+  const handleDragHandleTap = useCallback(() => {
+    // Only cycle if not dragging
+    if (isDraggingState) return;
+    
     const snapOrder: SnapPoint[] = ['peek', 'half', 'full'];
     const currentIndex = snapOrder.indexOf(currentSnap);
     const nextIndex = (currentIndex + 1) % snapOrder.length;
     snapTo(snapOrder[nextIndex]);
-  }, [currentSnap, snapTo]);
+  }, [currentSnap, snapTo, isDraggingState]);
 
   if (!isOpen) return null;
 
@@ -170,41 +174,47 @@ export function BottomSheet({
         style={{
           bottom: `${BOTTOM_OFFSET}px`,
           height: `${heightPx}px`,
-          maxHeight: `calc(90vh - ${BOTTOM_OFFSET}px)`,
+          maxHeight: `calc(92vh - ${BOTTOM_OFFSET}px)`,
           willChange: 'height',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {/* Drag Handle */}
+        {/* Drag Handle - Large touch area */}
         <div
-          className="absolute top-0 left-0 right-0 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+          className="absolute top-0 left-0 right-0 flex flex-col items-center justify-start pt-2 cursor-grab active:cursor-grabbing"
+          style={{ height: '44px', touchAction: 'none' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          onClick={handleDragHandleClick}
+          onClick={handleDragHandleTap}
         >
-          <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
+          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
         </div>
 
-        {/* Content */}
-        <div className="h-full pt-8 overflow-hidden flex flex-col">
-          {/* Peek content - always visible */}
+        {/* Content Container */}
+        <div 
+          className="flex flex-col"
+          style={{ 
+            height: `calc(100% - 44px)`,
+            marginTop: '44px',
+          }}
+        >
+          {/* Peek content - shown when in peek mode */}
           {peekContent && currentSnap === 'peek' && (
-            <div className="px-4 flex-shrink-0">
+            <div className="px-4 py-2 flex-shrink-0">
               {peekContent}
             </div>
           )}
 
-          {/* Full content - visible when not peeking */}
+          {/* Scrollable content - visible when not peeking */}
           {currentSnap !== 'peek' && (
-            <div className="flex-1 overflow-y-auto overscroll-contain">
-              {children}
-            </div>
-          )}
-
-          {/* Peek mode: show children but with limited height */}
-          {currentSnap === 'peek' && !peekContent && (
-            <div className="flex-1 overflow-hidden">
+            <div 
+              ref={contentRef}
+              className="flex-1 overflow-y-auto overflow-x-hidden"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain',
+              }}
+            >
               {children}
             </div>
           )}
@@ -213,4 +223,3 @@ export function BottomSheet({
     </>
   );
 }
-

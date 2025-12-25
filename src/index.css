@@ -361,31 +361,14 @@ html.dark body {
    MOBILE UX OVERHAUL
    ========================================== */
 
-/* Map container - prevent gesture conflicts on mobile */
+/* Map container styling */
 .map-container {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-/* On mobile, require cooperative gestures for map panning */
-@media (max-width: 768px) {
-  .map-container {
-    /* Allow vertical scrolling but prevent horizontal swipe from panning map */
-    touch-action: pan-y pinch-zoom;
-  }
-  
-  /* Google Maps specific overrides */
-  .map-container .gm-style {
-    touch-action: pan-y pinch-zoom !important;
-  }
-  
-  /* Ensure map can still be interacted with via pinch */
-  .map-container iframe,
-  .map-container canvas {
-    touch-action: manipulation;
-  }
-}
+/* Google Maps gesture handling is done via API options, not CSS */
 
 /* Safe area insets for notched devices */
 .safe-area-bottom {

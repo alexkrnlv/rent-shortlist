@@ -62,7 +62,8 @@ const sessionStorage = {
   async set(id: string, session: StoredSession): Promise<void> {
     if (redis) {
       // Store with 90-day expiration
-      await redis.set(`session:${id}`, JSON.stringify(session), 'EX', 90 * 24 * 60 * 60);
+      // No expiration - sessions persist forever
+      await redis.set(`session:${id}`, JSON.stringify(session));
     } else {
       memorySessionStore.set(id, session);
     }

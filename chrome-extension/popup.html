@@ -11,7 +11,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      width: 320px;
+      width: 340px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 200px;
     }
@@ -29,8 +29,8 @@
     }
 
     .header-icon {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       background: rgba(255,255,255,0.2);
       border-radius: 12px;
       display: flex;
@@ -61,16 +61,15 @@
       background: white;
       border-radius: 16px;
       padding: 16px;
-      margin-bottom: 16px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
 
     .property-card .thumbnail {
       width: 100%;
-      height: 120px;
+      height: 130px;
       background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
       border-radius: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -93,7 +92,7 @@
       font-size: 14px;
       font-weight: 600;
       color: #1e293b;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       line-height: 1.4;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -121,7 +120,56 @@
       font-weight: 500;
       padding: 4px 8px;
       border-radius: 6px;
-      margin-top: 8px;
+      margin-top: 10px;
+    }
+
+    /* Tags Section */
+    .tags-section {
+      margin-top: 16px;
+    }
+
+    .tags-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+      background: rgba(255,255,255,0.9);
+    }
+
+    .tag-chip:hover {
+      transform: scale(1.02);
+    }
+
+    .tag-chip.selected {
+      border-color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .tag-chip .tag-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
     }
 
     /* Buttons */
@@ -143,6 +191,7 @@
     .btn-primary {
       background: white;
       color: #7c3aed;
+      margin-top: 20px;
     }
 
     .btn-primary:hover {
@@ -164,9 +213,9 @@
     .btn-secondary {
       background: rgba(255,255,255,0.15);
       color: white;
-      margin-top: 10px;
+      margin-top: 12px;
       font-size: 13px;
-      padding: 10px 16px;
+      padding: 12px 16px;
     }
 
     .btn-secondary:hover {
@@ -177,7 +226,7 @@
     .status-card {
       background: white;
       border-radius: 16px;
-      padding: 24px;
+      padding: 28px 24px;
       text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
@@ -208,6 +257,10 @@
       background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     }
 
+    .status-icon.warning {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
     .status-icon svg {
       width: 32px;
       height: 32px;
@@ -215,7 +268,7 @@
     }
 
     .status-card h2 {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
       color: #1e293b;
       margin-bottom: 8px;
@@ -225,11 +278,6 @@
       font-size: 13px;
       color: #64748b;
       line-height: 1.5;
-    }
-
-    .status-card .property-name {
-      font-weight: 600;
-      color: #7c3aed;
     }
 
     /* Spinner */
@@ -242,23 +290,8 @@
       animation: spin 0.8s linear infinite;
     }
 
-    .spinner-white {
-      border-color: rgba(255,255,255,0.3);
-      border-top-color: white;
-    }
-
     @keyframes spin {
       to { transform: rotate(360deg); }
-    }
-
-    /* Pulse animation for processing */
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.05); opacity: 0.8; }
-    }
-
-    .status-icon.processing {
-      animation: pulse 2s ease-in-out infinite;
     }
 
     /* Settings link */
@@ -270,8 +303,9 @@
       color: rgba(255,255,255,0.6);
       font-size: 11px;
       text-decoration: none;
-      margin-top: 16px;
+      margin-top: 20px;
       cursor: pointer;
+      padding: 4px;
     }
 
     .settings-link:hover {
@@ -282,7 +316,7 @@
     .settings-panel {
       background: rgba(0,0,0,0.2);
       border-radius: 12px;
-      padding: 12px;
+      padding: 14px;
       margin-top: 12px;
     }
 
@@ -295,7 +329,7 @@
 
     .settings-panel input {
       width: 100%;
-      padding: 8px 12px;
+      padding: 10px 12px;
       border: none;
       border-radius: 8px;
       font-size: 12px;
@@ -307,44 +341,14 @@
       background: white;
     }
 
+    .settings-panel .help-text {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 6px;
+    }
+
     .hidden {
       display: none !important;
-    }
-
-    /* Tag chips in success state */
-    .tags-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      margin-top: 12px;
-    }
-
-    .tag-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 2px solid transparent;
-    }
-
-    .tag-chip:hover {
-      opacity: 0.8;
-    }
-
-    .tag-chip.selected {
-      border-color: #1e293b;
-    }
-
-    .tag-chip .tag-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
     }
   </style>
 </head>
@@ -381,8 +385,11 @@
         </span>
       </div>
 
-      <!-- Tags (optional) -->
-      <div id="tags-container" class="tags-container hidden"></div>
+      <!-- Tags Section -->
+      <div id="tags-section" class="tags-section hidden">
+        <div class="tags-label">Add tags (optional)</div>
+        <div id="tags-container" class="tags-container"></div>
+      </div>
 
       <button id="add-btn" class="btn btn-primary">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -405,8 +412,8 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-        <h2>Added!</h2>
-        <p>Opening in your shortlist app for processing...</p>
+        <h2>Saved!</h2>
+        <p>Property added to your shortlist.<br>Processing in the background...</p>
       </div>
       <button id="open-app-btn-success" class="btn btn-secondary">
         View in App →
@@ -428,6 +435,20 @@
       <button id="open-app-btn-already" class="btn btn-secondary">
         View in App →
       </button>
+    </div>
+
+    <!-- Setup Required View -->
+    <div id="setup-view" class="hidden">
+      <div class="status-card">
+        <div class="status-icon warning">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </div>
+        <h2>Setup Required</h2>
+        <p>Please enter your app URL in settings below to start saving properties.</p>
+      </div>
     </div>
 
     <!-- Error View -->
@@ -460,6 +481,7 @@
     <div id="settings-panel" class="settings-panel hidden">
       <label>App URL</label>
       <input type="text" id="app-url" placeholder="https://rent-shortlist.onrender.com">
+      <div class="help-text">Enter the URL where your Rent Shortlist app is hosted</div>
     </div>
   </div>
 

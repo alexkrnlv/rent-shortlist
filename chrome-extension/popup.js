@@ -12,11 +12,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   elements.successView = document.getElementById('success-view');
   elements.alreadyView = document.getElementById('already-view');
   elements.errorView = document.getElementById('error-view');
+  elements.setupView = document.getElementById('setup-view');
   elements.propertyTitle = document.getElementById('property-title');
   elements.propertyUrl = document.getElementById('property-url');
   elements.thumbnailContainer = document.getElementById('thumbnail-container');
   elements.siteBadge = document.getElementById('site-badge');
   elements.siteName = document.getElementById('site-name');
+  elements.tagsSection = document.getElementById('tags-section');
   elements.tagsContainer = document.getElementById('tags-container');
   elements.addBtn = document.getElementById('add-btn');
   elements.retryBtn = document.getElementById('retry-btn');
@@ -31,17 +33,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load saved app URL
   const stored = await chrome.storage.local.get(['appUrl']);
-  elements.appUrlInput.value = stored.appUrl || 'https://rent-shortlist.onrender.com';
+  const savedUrl = stored.appUrl || '';
+  elements.appUrlInput.value = savedUrl;
 
   // Save app URL on change
   elements.appUrlInput.addEventListener('change', () => {
-    chrome.storage.local.set({ appUrl: elements.appUrlInput.value.trim() });
+    const url = elements.appUrlInput.value.trim();
+    chrome.storage.local.set({ appUrl: url });
+    // If we were showing setup view and now have a URL, reload
+    if (url && !elements.setupView.classList.contains('hidden')) {
+      location.reload();
+    }
   });
 
   // Settings toggle
   elements.settingsToggle.addEventListener('click', () => {
     elements.settingsPanel.classList.toggle('hidden');
   });
+
+  // Check if URL is configured
+  if (!savedUrl) {
+    showSetupRequired();
+    // Auto-expand settings
+    elements.settingsPanel.classList.remove('hidden');
+    return;
+  }
 
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -146,6 +162,7 @@ function showThumbnail(src) {
 // Get API URL
 function getApiUrl() {
   const appUrl = elements.appUrlInput.value.trim().replace(/\/$/, '');
+  if (!appUrl) return '';
   if (appUrl.includes('localhost:5173') || appUrl.includes('localhost:5174')) {
     return appUrl.replace(':5173', ':3001').replace(':5174', ':3001');
   }
@@ -198,25 +215,26 @@ let selectedTagIds = [];
 async function fetchTags() {
   try {
     const apiUrl = getApiUrl();
+    if (!apiUrl) return;
     availableTags = await safeFetch(`${apiUrl}/api/tags`);
     renderTags();
   } catch (e) {
-    console.log('Could not fetch tags');
+    console.log('Could not fetch tags:', e.message);
   }
 }
 
 function renderTags() {
   if (!Array.isArray(availableTags) || availableTags.length === 0) {
-    elements.tagsContainer.classList.add('hidden');
+    elements.tagsSection.classList.add('hidden');
     return;
   }
 
-  elements.tagsContainer.classList.remove('hidden');
+  elements.tagsSection.classList.remove('hidden');
   elements.tagsContainer.innerHTML = availableTags.map(tag => `
     <span
       class="tag-chip ${selectedTagIds.includes(tag.id) ? 'selected' : ''}"
       data-tag-id="${tag.id}"
-      style="background-color: ${tag.color}20; color: ${tag.color}"
+      style="background-color: ${tag.color}15; color: ${tag.color}"
     >
       <span class="tag-dot" style="background-color: ${tag.color}"></span>
       ${tag.name}
@@ -241,6 +259,13 @@ function renderTags() {
 async function handleAdd() {
   const apiUrl = getApiUrl();
   
+  // Check if URL is configured
+  if (!apiUrl) {
+    showSetupRequired();
+    elements.settingsPanel.classList.remove('hidden');
+    return;
+  }
+  
   // Disable button, show loading
   elements.addBtn.disabled = true;
   elements.addBtn.innerHTML = '<div class="spinner"></div> Adding...';
@@ -262,17 +287,12 @@ async function handleAdd() {
     // Save locally
     await saveAddedProperty(currentTab.url, pageData?.title || currentTab.title);
 
-    // Show success
+    // Show success - DON'T auto-open the app
     showSuccess();
-
-    // Open app after a short delay so user sees success state
-    setTimeout(() => {
-      openApp();
-    }, 1500);
 
   } catch (error) {
     console.error('Error adding property:', error);
-    showError(error.message || 'Could not connect to server. Check your App URL.');
+    showError(error.message || 'Could not connect to server. Check your App URL in settings.');
   }
 }
 
@@ -305,6 +325,11 @@ function showSuccess() {
 function showAlreadyAdded() {
   elements.addView.classList.add('hidden');
   elements.alreadyView.classList.remove('hidden');
+}
+
+function showSetupRequired() {
+  elements.addView.classList.add('hidden');
+  elements.setupView.classList.remove('hidden');
 }
 
 function showError(message) {

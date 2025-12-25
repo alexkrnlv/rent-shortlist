@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Rent Shortlist",
+  "version": "1.0.0",
+  "description": "Add property listings to your Rent Shortlist with one click",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:5173/*",
+    "http://localhost:3001/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "32": "icons/icon32.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.svg",
+    "32": "icons/icon32.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.rightmove.co.uk/*",
+        "*://*.zoopla.co.uk/*",
+        "*://*.openrent.com/*",
+        "*://*.spareroom.co.uk/*",
+        "*://*.onthemarket.com/*",
+        "*://*/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

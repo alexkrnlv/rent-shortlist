@@ -5,9 +5,14 @@ import { fileURLToPath } from 'url';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from 'dotenv';
 import Redis from 'ioredis';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 // Load environment variables
 config();
+
+// Configure Puppeteer with stealth plugin to avoid detection
+puppeteer.use(StealthPlugin());
 
 // Initialize Redis connection for session storage
 const redis = process.env.REDIS_URL 
@@ -278,6 +283,195 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// ============================================
+// Headless Browser Service (with connection pooling)
+// ============================================
+
+// Check if headless browser is enabled
+// Set ENABLE_HEADLESS_BROWSER=false in .env to disable (default: enabled)
+const HEADLESS_BROWSER_ENABLED = process.env.ENABLE_HEADLESS_BROWSER !== 'false';
+
+// Browser instance pool (reuse browser instances for efficiency)
+let browserInstance: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+let browserLaunchPromise: Promise<Awaited<ReturnType<typeof puppeteer.launch>>> | null = null;
+
+// Get or create browser instance (with connection pooling)
+async function getBrowserInstance() {
+  if (browserInstance) {
+    return browserInstance;
+  }
+
+  if (browserLaunchPromise) {
+    return browserLaunchPromise;
+  }
+
+  browserLaunchPromise = puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--window-size=1920,1080',
+    ],
+    timeout: 30000,
+  });
+
+  try {
+    browserInstance = await browserLaunchPromise;
+    browserLaunchPromise = null;
+    
+    // Clean up on browser close
+    browserInstance.on('disconnected', () => {
+      browserInstance = null;
+      browserLaunchPromise = null;
+    });
+    
+    return browserInstance;
+  } catch (error) {
+    browserLaunchPromise = null;
+    throw error;
+  }
+}
+
+// Fetch page content using headless browser
+async function fetchWithHeadlessBrowser(url: string, timeout = 30000): Promise<string> {
+  if (!HEADLESS_BROWSER_ENABLED) {
+    throw new Error('Headless browser is disabled');
+  }
+
+  const browser = await getBrowserInstance();
+  let page: Awaited<ReturnType<typeof browser.newPage>> | null = null;
+
+  try {
+    page = await browser.newPage();
+    
+    // Set realistic viewport
+    await page.setViewport({ width: 1920, height: 1080 });
+    
+    // Set user agent
+    const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+    await page.setUserAgent(userAgent);
+    
+    // Set additional headers to appear more like a real browser
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-GB,en;q=0.9,en-US;q=0.8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Upgrade-Insecure-Requests': '1',
+    });
+
+    // Navigate to page with timeout
+    await page.goto(url, {
+      waitUntil: 'networkidle2', // Wait until network is mostly idle
+      timeout,
+    });
+
+    // Wait a bit for any JavaScript to finish rendering
+    await page.waitForTimeout(1000);
+
+    // Get page content
+    const html = await page.content();
+    
+    return html;
+  } catch (error) {
+    console.error('Headless browser fetch error:', error);
+    throw new Error(`Headless browser failed: ${(error as Error).message}`);
+  } finally {
+    if (page) {
+      try {
+        await page.close();
+      } catch (e) {
+        // Ignore close errors
+      }
+    }
+  }
+}
+
+// Cleanup browser on process exit
+process.on('SIGINT', async () => {
+  if (browserInstance) {
+    await browserInstance.close();
+  }
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  if (browserInstance) {
+    await browserInstance.close();
+  }
+  process.exit(0);
+});
+
+// ============================================
+// Content Validation
+// ============================================
+
+// Check if content appears to be blocked or invalid
+function isContentValid(html: string): boolean {
+  if (!html || html.length < 100) {
+    return false; // Too short, likely blocked
+  }
+
+  // Check for common blocking indicators
+  const blockingIndicators = [
+    /access denied/i,
+    /blocked/i,
+    /forbidden/i,
+    /403/i,
+    /cloudflare/i,
+    /checking your browser/i,
+    /please wait/i,
+    /captcha/i,
+    /robot/i,
+    /bot detection/i,
+  ];
+
+  const htmlLower = html.toLowerCase();
+  for (const pattern of blockingIndicators) {
+    if (pattern.test(htmlLower)) {
+      // Check if it's just a small blocking message vs actual content
+      if (html.length < 2000 && pattern.test(htmlLower)) {
+        return false; // Likely a blocking page
+      }
+    }
+  }
+
+  // Check for meaningful content indicators
+  const contentIndicators = [
+    /<body/i,
+    /<main/i,
+    /<article/i,
+    /property/i,
+    /rent/i,
+    /address/i,
+    /postcode/i,
+    /bedroom/i,
+  ];
+
+  const hasContent = contentIndicators.some(pattern => pattern.test(htmlLower));
+  
+  return hasContent;
+}
+
+// Check if error indicates blocking
+function isBlockedError(error: Error | unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  
+  const message = error.message.toLowerCase();
+  const blockedPatterns = [
+    '403',
+    '429',
+    'blocked',
+    'forbidden',
+    'access denied',
+    'rate limited',
+  ];
+  
+  return blockedPatterns.some(pattern => message.includes(pattern));
+}
+
 // User agents for rotation
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -286,7 +480,7 @@ const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
 ];
 
-// Fetch with retry logic
+// Fetch with retry logic (standard HTTP fetch)
 async function fetchWithRetry(url: string, maxRetries = 3): Promise<string> {
   let lastError: Error | null = null;
 
@@ -315,7 +509,17 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<string> {
       });
 
       if (response.ok) {
-        return await response.text();
+        const html = await response.text();
+        // Validate content - if it looks blocked, treat as error
+        if (!isContentValid(html)) {
+          lastError = new Error('Content validation failed - page may be blocked');
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
+            continue;
+          }
+          throw lastError;
+        }
+        return html;
       }
 
       if (response.status === 403 || response.status === 429) {
@@ -335,6 +539,46 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<string> {
   }
 
   throw lastError || new Error('Failed to fetch after retries');
+}
+
+// Fetch with automatic headless browser fallback (hybrid approach)
+async function fetchWithFallback(url: string): Promise<string> {
+  // Step 1: Try standard fetch first (fast, cheap)
+  try {
+    const html = await fetchWithRetry(url);
+    console.log(`✅ Standard fetch succeeded for ${url}`);
+    return html;
+  } catch (error) {
+    // Step 2: Check if we should use headless browser fallback
+    if (!HEADLESS_BROWSER_ENABLED) {
+      console.log(`⚠️ Standard fetch failed and headless browser is disabled for ${url}`);
+      throw error;
+    }
+
+    // Only use headless browser for blocking errors or content validation failures
+    if (isBlockedError(error) || (error instanceof Error && error.message.includes('Content validation failed'))) {
+      console.log(`🔄 Standard fetch blocked, using headless browser for ${url}`);
+      try {
+        const html = await fetchWithHeadlessBrowser(url);
+        
+        // Validate headless browser content too
+        if (!isContentValid(html)) {
+          console.log(`⚠️ Headless browser content validation failed for ${url}`);
+          throw new Error('Headless browser returned invalid content');
+        }
+        
+        console.log(`✅ Headless browser succeeded for ${url}`);
+        return html;
+      } catch (headlessError) {
+        console.error(`❌ Headless browser also failed for ${url}:`, headlessError);
+        // Throw original error, not headless error (more informative)
+        throw error;
+      }
+    }
+
+    // For other errors (network, timeout, etc.), don't use headless browser
+    throw error;
+  }
 }
 
 // Extract structured data (JSON-LD) from HTML
@@ -1039,8 +1283,8 @@ app.post('/api/fetch-property', async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Fetch the page HTML with retry
-    const html = await fetchWithRetry(url);
+    // Fetch the page HTML with automatic headless browser fallback
+    const html = await fetchWithFallback(url);
 
     // Extract images first (will be used as fallback)
     const allImages = extractImages(html);
@@ -1458,19 +1702,10 @@ async function processPropertyInBackground(property: ExtensionProperty): Promise
     if (!contentForAI || contentForAI.length < 100) {
       console.log('   No page text from extension, trying server-side fetch...');
       try {
-        const response = await fetch(property.url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          },
-        });
-
-        if (response.ok) {
-          const html = await response.text();
-          contentForAI = prepareHtmlForAI(html, property.url);
-        } else {
-          console.log(`   Server fetch failed: ${response.status}`);
-        }
+        // Use fetchWithFallback for automatic headless browser fallback
+        const html = await fetchWithFallback(property.url);
+        contentForAI = prepareHtmlForAI(html, property.url);
+        console.log('   Server-side fetch succeeded');
       } catch (fetchError) {
         console.log('   Server fetch error:', (fetchError as Error).message);
       }

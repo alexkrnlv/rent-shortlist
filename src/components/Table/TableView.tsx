@@ -212,7 +212,11 @@ function CommentCell({ comment, onSave }: CommentCellProps) {
   );
 }
 
-export function TableView() {
+interface TableViewProps {
+  onShowOnMap?: (propertyId: string) => void;
+}
+
+export function TableView({ onShowOnMap }: TableViewProps) {
   const {
     getFilteredProperties,
     selectedPropertyId,
@@ -894,6 +898,18 @@ export function TableView() {
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-2">
+                    {/* Show on Map button */}
+                    {onShowOnMap && property.coordinates && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onShowOnMap(property.id);
+                        }}
+                        className="flex-1 inline-flex items-center justify-center gap-2 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600"
+                      >
+                        <MapPin size={14} /> Show on Map
+                      </button>
+                    )}
                     {property.url && (
                       <a
                         href={property.url}

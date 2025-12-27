@@ -158,7 +158,11 @@ function App() {
         }
         sidebar={<Sidebar onAddClick={() => setShowAddModal(true)} />}
         map={<MapView />}
-        table={<TableView />}
+        table={<TableView onShowOnMap={(propertyId) => {
+          // Select the property and switch to map view
+          usePropertyStore.getState().setSelectedProperty(propertyId);
+          setViewMode('map');
+        }} />}
       />
 
       <AddPropertyModal

@@ -32,7 +32,6 @@ const darkMapStyles: google.maps.MapTypeStyle[] = [
   { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
   { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
   { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
-  // Keep transit visible and contrasting - don't override default colors
   { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#81d4fa' }] },
   { featureType: 'transit.station', elementType: 'labels.icon', stylers: [{ visibility: 'on' }] },
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
@@ -51,22 +50,103 @@ const getMapOptions = (isDark: boolean, isMobile: boolean): google.maps.MapOptio
   keyboardShortcuts: !isMobile,
 });
 
-// Simple dot marker for properties
-interface PropertyDotMarkerProps {
+// ===========================================
+// DESKTOP: Image marker with preview and name
+// ===========================================
+interface DesktopPropertyMarkerProps {
   property: Property;
   isSelected: boolean;
   onClick: () => void;
 }
 
-function PropertyDotMarker({ property, isSelected, onClick }: PropertyDotMarkerProps) {
+function DesktopPropertyMarker({ property, isSelected, onClick }: DesktopPropertyMarkerProps) {
   if (!property.coordinates) return null;
 
-  // Property dots are teal/cyan, selected is darker
+  const getRatingBorderColor = () => {
+    if (!property.rating) return isSelected ? '#1E40AF' : 'white';
+    if (property.rating >= 4) return '#22C55E';
+    if (property.rating >= 3) return '#F59E0B';
+    return isSelected ? '#1E40AF' : 'white';
+  };
+
+  return (
+    <OverlayView
+      position={property.coordinates}
+      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+    >
+      <div
+        className="property-marker cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        style={{
+          transform: 'translate(-50%, -100%)',
+          zIndex: isSelected ? 1000 : 1,
+          position: 'relative',
+        }}
+      >
+        <div className={`relative ${isSelected ? 'scale-110' : ''} transition-transform`}>
+          {property.thumbnail ? (
+            <img
+              src={property.thumbnail}
+              alt={property.name}
+              className="w-12 h-12 rounded-lg object-cover shadow-lg"
+              style={{
+                borderColor: getRatingBorderColor(),
+                borderWidth: property.rating && property.rating >= 3 ? '4px' : '3px',
+                borderStyle: 'solid',
+              }}
+            />
+          ) : (
+            <div
+              className="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-100 shadow-lg"
+              style={{
+                borderColor: getRatingBorderColor(),
+                borderWidth: property.rating && property.rating >= 3 ? '4px' : '3px',
+                borderStyle: 'solid',
+              }}
+            >
+              <MapPin size={20} className="text-blue-700" />
+            </div>
+          )}
+          {property.rating && property.rating > 0 && (
+            <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+              <span className="text-[10px] font-bold text-white">{property.rating}</span>
+            </div>
+          )}
+          {property.isBTR && (
+            <div className="absolute -bottom-1 -left-1 bg-purple-600 text-white text-[8px] font-bold px-1 py-0.5 rounded shadow-md">
+              BTR
+            </div>
+          )}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-md text-xs font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+            {property.price || property.name.substring(0, 15)}
+          </div>
+        </div>
+      </div>
+    </OverlayView>
+  );
+}
+
+// ===========================================
+// MOBILE: Simple colored dot marker
+// ===========================================
+interface MobileDotMarkerProps {
+  property: Property;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function MobileDotMarker({ property, isSelected, onClick }: MobileDotMarkerProps) {
+  if (!property.coordinates) return null;
+
+  // Use coral/rose colors - stands out better on map
   const getMarkerColor = () => {
-    if (isSelected) return '#0891B2'; // cyan-600
-    if (property.rating && property.rating >= 4) return '#14B8A6'; // teal-500
-    if (property.rating && property.rating >= 3) return '#2DD4BF'; // teal-400
-    return '#5EEAD4'; // teal-300
+    if (isSelected) return '#E11D48'; // rose-600
+    if (property.rating && property.rating >= 4) return '#F43F5E'; // rose-500
+    if (property.rating && property.rating >= 3) return '#FB7185'; // rose-400
+    return '#FDA4AF'; // rose-300
   };
 
   return (
@@ -88,16 +168,16 @@ function PropertyDotMarker({ property, isSelected, onClick }: PropertyDotMarkerP
         <div
           className={`
             rounded-full shadow-lg transition-transform duration-150
-            ${isSelected ? 'scale-125' : 'hover:scale-110'}
+            ${isSelected ? 'scale-150' : 'hover:scale-125'}
           `}
           style={{
-            width: isSelected ? '20px' : '16px',
-            height: isSelected ? '20px' : '16px',
+            width: isSelected ? '22px' : '16px',
+            height: isSelected ? '22px' : '16px',
             backgroundColor: getMarkerColor(),
             border: `3px solid white`,
             boxShadow: isSelected 
-              ? '0 0 0 3px rgba(8, 145, 178, 0.3), 0 4px 12px rgba(0,0,0,0.3)' 
-              : '0 2px 6px rgba(0,0,0,0.3)',
+              ? '0 0 0 4px rgba(225, 29, 72, 0.3), 0 4px 12px rgba(0,0,0,0.4)' 
+              : '0 2px 8px rgba(0,0,0,0.4)',
           }}
         />
       </div>
@@ -105,7 +185,9 @@ function PropertyDotMarker({ property, isSelected, onClick }: PropertyDotMarkerP
   );
 }
 
-// Desktop property popup (info window style)
+// ===========================================
+// DESKTOP: Property popup (info window style)
+// ===========================================
 function PropertyPopup({ property, onClose }: { property: Property; onClose: () => void }) {
   if (!property.coordinates) return null;
 
@@ -118,7 +200,7 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-[280px]"
         style={{
           transform: 'translate(-50%, -100%)',
-          marginTop: '-20px',
+          marginTop: '-70px',
           position: 'relative',
           zIndex: 2000,
         }}
@@ -141,7 +223,15 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
         )}
 
         <div className="p-3">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-6 text-sm">{property.name}</h3>
+          <div className="flex items-start gap-2 mb-1">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 pr-6 text-sm flex-1">{property.name}</h3>
+            {property.isBTR && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-bold shrink-0">
+                <Building2 size={10} />
+                BTR
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{property.address}</p>
 
           <div className="mb-2">
@@ -183,7 +273,9 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
   );
 }
 
-// Mobile property slide-up sheet (covers 40% of screen, covers bottom nav)
+// ===========================================
+// MOBILE: Full slide-up sheet (covers bottom nav)
+// ===========================================
 function MobilePropertySheet({ 
   property, 
   onClose,
@@ -193,51 +285,65 @@ function MobilePropertySheet({
   onClose: () => void;
   isVisible: boolean;
 }) {
+  // Handle drag to close
+  const handleDragClose = () => {
+    onClose();
+  };
+
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - z-[100] to be above everything including bottom nav */}
       <div
         className={`
-          fixed inset-0 bg-black/20 z-50 transition-opacity duration-300
+          fixed inset-0 bg-black/30 z-[100] transition-opacity duration-300 ease-out
           ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}
         `}
         onClick={onClose}
       />
       
-      {/* Sheet */}
+      {/* Sheet - z-[101] above backdrop */}
       <div
         className={`
           fixed left-0 right-0 bottom-0 bg-white dark:bg-gray-800 
-          rounded-t-3xl shadow-2xl z-50
+          rounded-t-3xl shadow-2xl z-[101]
           transition-transform duration-300 ease-out
           ${isVisible ? 'translate-y-0' : 'translate-y-full'}
         `}
         style={{ 
-          height: '40vh',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          height: '45vh',
+          minHeight: '300px',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-        </div>
+        {/* Drag handle - tap or drag to close */}
+        <button 
+          onClick={handleDragClose}
+          className="w-full flex justify-center pt-3 pb-2 active:bg-gray-50 dark:active:bg-gray-700 rounded-t-3xl transition-colors"
+        >
+          <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
+        </button>
 
-        {/* Close button */}
+        {/* Close button - positioned away from BTR badge */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-2.5 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          className="absolute top-3 right-4 p-2.5 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors z-10"
           aria-label="Close"
         >
           <X size={20} className="text-gray-600 dark:text-gray-300" />
         </button>
 
         {/* Content - scrollable */}
-        <div className="h-full overflow-y-auto px-4 pb-4">
+        <div 
+          className="overflow-y-auto px-5 pb-8"
+          style={{ 
+            height: 'calc(100% - 40px)',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {/* Header with image and basic info */}
           <div className="flex gap-4 mb-4">
             {/* Thumbnail */}
-            <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0">
+            <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0 shadow-md">
               {property.thumbnail ? (
                 <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -247,66 +353,65 @@ function MobilePropertySheet({
               )}
             </div>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0 pt-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg line-clamp-1">{property.name}</h3>
-                {property.isBTR && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-bold">
-                    <Building2 size={10} />
-                    BTR
-                  </span>
-                )}
-              </div>
+            {/* Info - BTR badge moved below name, not next to X */}
+            <div className="flex-1 min-w-0 pt-1 pr-10">
+              <h3 className="font-bold text-gray-900 dark:text-white text-lg line-clamp-2 mb-1">{property.name}</h3>
+              {property.isBTR && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-bold mb-1">
+                  <Building2 size={12} />
+                  BTR
+                </span>
+              )}
               <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{property.address}</p>
-              
-              <div className="mt-2">
-                <StarRating rating={property.rating} readonly size="md" />
-              </div>
             </div>
+          </div>
+
+          {/* Rating */}
+          <div className="mb-4">
+            <StarRating rating={property.rating} readonly size="lg" />
           </div>
 
           {/* Price */}
           {property.price && (
-            <div className="mb-4">
-              <span className="text-2xl font-bold text-primary-700 dark:text-primary-400">{property.price}</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">/ month</span>
+            <div className="mb-5">
+              <span className="text-3xl font-bold text-primary-700 dark:text-primary-400">{property.price}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">/ month</span>
             </div>
           )}
 
           {/* Distances */}
           {property.distances && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <Navigation size={18} className="text-gray-500 dark:text-gray-400" />
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <Navigation size={20} className="text-gray-500 dark:text-gray-400" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.direct.toFixed(1)} km</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Direct</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white">{property.distances.direct.toFixed(1)} km</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Direct distance</p>
                 </div>
               </div>
               {property.distances.publicTransport && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-                  <Train size={18} className="text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                  <Train size={20} className="text-blue-600 dark:text-blue-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.publicTransport.duration}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Transit</p>
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">{property.distances.publicTransport.duration}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">By transit</p>
                   </div>
                 </div>
               )}
               {property.distances.walking && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
-                  <PersonStanding size={18} className="text-green-600 dark:text-green-400" />
+                <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                  <PersonStanding size={20} className="text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.walking.duration}</p>
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">{property.distances.walking.duration}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Walking</p>
                   </div>
                 </div>
               )}
               {property.distances.driving && (
-                <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl">
-                  <Car size={18} className="text-orange-600 dark:text-orange-400" />
+                <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl">
+                  <Car size={20} className="text-orange-600 dark:text-orange-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.driving.duration}</p>
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">{property.distances.driving.duration}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Driving</p>
                   </div>
                 </div>
@@ -316,7 +421,7 @@ function MobilePropertySheet({
 
           {/* Comment */}
           {property.comment && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+            <div className="mb-5 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800">
               <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{property.comment}"</p>
             </div>
           )}
@@ -327,10 +432,10 @@ function MobilePropertySheet({
               href={property.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-4 bg-primary-600 text-white rounded-xl text-base font-semibold active:bg-primary-700 transition-colors"
+              className="flex items-center justify-center gap-2 w-full py-4 bg-primary-600 text-white rounded-xl text-base font-semibold active:bg-primary-700 transition-colors shadow-lg"
             >
-              <ExternalLink size={18} />
-              View Listing
+              <ExternalLink size={20} />
+              View Original Listing
             </a>
           )}
         </div>
@@ -432,7 +537,6 @@ export function MapView() {
   // Apply dark mode styles to map (only for roadmap, not satellite)
   useEffect(() => {
     if (map) {
-      // Don't apply custom styles to satellite view - they don't work and interfere with transit
       if (mapType === 'satellite') {
         map.setOptions({ styles: [] });
       } else {
@@ -517,14 +621,23 @@ export function MapView() {
           title={settings.centerPoint.name}
         />
 
-        {/* Property Markers - Teal dots */}
+        {/* Property Markers - Desktop: Images, Mobile: Dots */}
         {mapReady && filteredProperties.map((property) => (
-          <PropertyDotMarker
-            key={property.id}
-            property={property}
-            isSelected={property.id === selectedPropertyId}
-            onClick={() => handleMarkerClick(property.id)}
-          />
+          isMobile ? (
+            <MobileDotMarker
+              key={property.id}
+              property={property}
+              isSelected={property.id === selectedPropertyId}
+              onClick={() => handleMarkerClick(property.id)}
+            />
+          ) : (
+            <DesktopPropertyMarker
+              key={property.id}
+              property={property}
+              isSelected={property.id === selectedPropertyId}
+              onClick={() => handleMarkerClick(property.id)}
+            />
+          )
         ))}
 
         {/* Desktop: Property Popup */}
@@ -536,7 +649,7 @@ export function MapView() {
         )}
       </GoogleMap>
 
-      {/* Mobile: Property Sheet (covers bottom nav) */}
+      {/* Mobile: Property Sheet (covers bottom nav with z-[100+]) */}
       {isMobile && selectedProperty && (
         <MobilePropertySheet
           property={selectedProperty}

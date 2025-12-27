@@ -17,6 +17,7 @@ const lightMapStyles: google.maps.MapTypeStyle[] = [
   { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
 ];
 
+// Dark map styles - transit-friendly version that keeps transit visible
 const darkMapStyles: google.maps.MapTypeStyle[] = [
   { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
@@ -31,9 +32,9 @@ const darkMapStyles: google.maps.MapTypeStyle[] = [
   { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
   { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
   { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
-  { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  // Keep transit visible and contrasting - don't override default colors
+  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#81d4fa' }] },
+  { featureType: 'transit.station', elementType: 'labels.icon', stylers: [{ visibility: 'on' }] },
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
   { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
@@ -365,12 +366,17 @@ export function MapView() {
     }
   }, [map, transitLayer, showTransit]);
 
-  // Apply dark mode styles to map
+  // Apply dark mode styles to map (only for roadmap, not satellite)
   useEffect(() => {
     if (map) {
-      map.setOptions({ styles: isDarkMode ? darkMapStyles : lightMapStyles });
+      // Don't apply custom styles to satellite view - they don't work and interfere with transit
+      if (mapType === 'satellite') {
+        map.setOptions({ styles: [] });
+      } else {
+        map.setOptions({ styles: isDarkMode ? darkMapStyles : lightMapStyles });
+      }
     }
-  }, [map, isDarkMode]);
+  }, [map, isDarkMode, mapType]);
 
   const handleMarkerClick = (propertyId: string) => {
     if (selectedPropertyId === propertyId) {

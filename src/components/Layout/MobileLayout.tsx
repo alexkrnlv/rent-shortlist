@@ -29,18 +29,21 @@ export function MobileLayout({
       {/* Compact Header */}
       {header}
 
-      {/* Main Content Area */}
-      <div className="flex-1 relative overflow-hidden">
+      {/* Main Content Area - use absolute positioning for proper scrolling */}
+      <div className="flex-1 relative">
         {viewMode === 'map' ? (
           /* Full-screen Map - property preview is handled in MapView */
           <div className="absolute inset-0">
             {map}
           </div>
         ) : (
-          /* Table View - Full screen with bottom nav padding */
+          /* Table View - absolute positioned with bottom nav padding */
           <div 
-            className="h-full overflow-y-auto"
-            style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+            className="absolute inset-0 overflow-y-auto"
+            style={{ 
+              paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+              WebkitOverflowScrolling: 'touch',
+            }}
           >
             {table}
           </div>

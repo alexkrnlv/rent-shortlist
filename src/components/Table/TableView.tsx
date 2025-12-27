@@ -309,7 +309,7 @@ export function TableView() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       {/* Search & Filter Bar */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-4 py-3 flex items-center gap-3">
@@ -773,7 +773,7 @@ export function TableView() {
 
       {/* Mobile Card View */}
       {properties.length > 0 && (
-        <div className="md:hidden flex-1 overflow-auto p-4 space-y-3">
+        <div className="md:hidden p-4 space-y-3 pb-8">
           {properties.map((property) => (
             <div
               key={property.id}

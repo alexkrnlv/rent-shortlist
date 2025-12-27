@@ -4,7 +4,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 import type { Property } from '../../types';
-import { MapPin, Navigation, Train, X, ExternalLink, ChevronUp } from 'lucide-react';
+import { MapPin, Navigation, Train, X, ExternalLink, Car, PersonStanding, Building2 } from 'lucide-react';
 import { StarRating } from '../ui/StarRating';
 
 const mapContainerStyle = {
@@ -183,96 +183,159 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
   );
 }
 
-// Mobile property preview card (Google Maps style bottom card)
-function MobilePropertyCard({ 
+// Mobile property slide-up sheet (covers 40% of screen, covers bottom nav)
+function MobilePropertySheet({ 
   property, 
-  onClose, 
-  onExpand 
+  onClose,
+  isVisible,
 }: { 
   property: Property; 
   onClose: () => void;
-  onExpand: () => void;
+  isVisible: boolean;
 }) {
   return (
-    <div
-      className="fixed left-3 right-3 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-40 animate-slideUp"
-      style={{ 
-        bottom: 'calc(70px + env(safe-area-inset-bottom, 0px))',
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Drag handle */}
-      <button 
-        onClick={onExpand}
-        className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center"
+    <>
+      {/* Backdrop */}
+      <div
+        className={`
+          fixed inset-0 bg-black/20 z-50 transition-opacity duration-300
+          ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+        `}
+        onClick={onClose}
+      />
+      
+      {/* Sheet */}
+      <div
+        className={`
+          fixed left-0 right-0 bottom-0 bg-white dark:bg-gray-800 
+          rounded-t-3xl shadow-2xl z-50
+          transition-transform duration-300 ease-out
+          ${isVisible ? 'translate-y-0' : 'translate-y-full'}
+        `}
+        style={{ 
+          height: '40vh',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-      </button>
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+        </div>
 
-      <div className="flex gap-3 p-4 pt-6">
-        {/* Thumbnail */}
-        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0">
-          {property.thumbnail ? (
-            <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <MapPin size={24} className="text-gray-400" />
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2.5 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          aria-label="Close"
+        >
+          <X size={20} className="text-gray-600 dark:text-gray-300" />
+        </button>
+
+        {/* Content - scrollable */}
+        <div className="h-full overflow-y-auto px-4 pb-4">
+          {/* Header with image and basic info */}
+          <div className="flex gap-4 mb-4">
+            {/* Thumbnail */}
+            <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0">
+              {property.thumbnail ? (
+                <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <MapPin size={32} className="text-gray-400" />
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 pt-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-bold text-gray-900 dark:text-white text-lg line-clamp-1">{property.name}</h3>
+                {property.isBTR && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-bold">
+                    <Building2 size={10} />
+                    BTR
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{property.address}</p>
+              
+              <div className="mt-2">
+                <StarRating rating={property.rating} readonly size="md" />
+              </div>
+            </div>
+          </div>
+
+          {/* Price */}
+          {property.price && (
+            <div className="mb-4">
+              <span className="text-2xl font-bold text-primary-700 dark:text-primary-400">{property.price}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">/ month</span>
             </div>
           )}
-        </div>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-1">{property.name}</h3>
-            <button
-              onClick={onClose}
-              className="p-1.5 -mt-1 -mr-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          {/* Distances */}
+          {property.distances && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <Navigation size={18} className="text-gray-500 dark:text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.direct.toFixed(1)} km</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Direct</p>
+                </div>
+              </div>
+              {property.distances.publicTransport && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                  <Train size={18} className="text-blue-600 dark:text-blue-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.publicTransport.duration}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Transit</p>
+                  </div>
+                </div>
+              )}
+              {property.distances.walking && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                  <PersonStanding size={18} className="text-green-600 dark:text-green-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.walking.duration}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Walking</p>
+                  </div>
+                </div>
+              )}
+              {property.distances.driving && (
+                <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl">
+                  <Car size={18} className="text-orange-600 dark:text-orange-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{property.distances.driving.duration}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Driving</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Comment */}
+          {property.comment && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+              <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{property.comment}"</p>
+            </div>
+          )}
+
+          {/* Action button */}
+          {property.url && (
+            <a
+              href={property.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-4 bg-primary-600 text-white rounded-xl text-base font-semibold active:bg-primary-700 transition-colors"
             >
-              <X size={18} />
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">{property.address}</p>
-          
-          <div className="mt-1.5">
-            <StarRating rating={property.rating} readonly size="sm" />
-          </div>
-
-          <div className="flex items-center justify-between mt-2">
-            {property.price && (
-              <span className="font-bold text-primary-700 dark:text-primary-400">{property.price}</span>
-            )}
-            {property.distances && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <Navigation size={12} />
-                {property.distances.direct.toFixed(1)}km
-              </span>
-            )}
-          </div>
+              <ExternalLink size={18} />
+              View Listing
+            </a>
+          )}
         </div>
       </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-2 px-4 pb-4">
-        {property.url && (
-          <a
-            href={property.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-primary-600 text-white rounded-xl text-sm font-medium active:bg-primary-700 transition-colors"
-          >
-            <ExternalLink size={16} />
-            View Listing
-          </a>
-        )}
-        <button
-          onClick={onExpand}
-          className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
-        >
-          <ChevronUp size={18} />
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -392,16 +455,9 @@ export function MapView() {
     setShowPopup(false);
   };
 
-  const handleClosePropertyCard = () => {
+  const handleCloseSheet = () => {
     setSelectedProperty(null);
     setShowPopup(false);
-  };
-
-  const handleExpandPropertyCard = () => {
-    // For now, just open the listing in a new tab
-    if (selectedProperty?.url) {
-      window.open(selectedProperty.url, '_blank');
-    }
   };
 
   if (loadError) {
@@ -480,71 +536,73 @@ export function MapView() {
         )}
       </GoogleMap>
 
-      {/* Mobile: Property Preview Card at bottom */}
-      {isMobile && selectedProperty && showPopup && (
-        <MobilePropertyCard
+      {/* Mobile: Property Sheet (covers bottom nav) */}
+      {isMobile && selectedProperty && (
+        <MobilePropertySheet
           property={selectedProperty}
-          onClose={handleClosePropertyCard}
-          onExpand={handleExpandPropertyCard}
+          onClose={handleCloseSheet}
+          isVisible={showPopup}
         />
       )}
 
-      {/* Map Controls Overlay */}
-      <div className={`
-        absolute z-10 flex flex-col gap-2
-        ${isMobile 
-          ? 'top-3 left-3' 
-          : 'top-4 right-4'
-        }
-      `}>
-        {/* Map Type Toggle */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {/* Map Controls Overlay - hide when sheet is open on mobile */}
+      {(!isMobile || !showPopup) && (
+        <div className={`
+          absolute z-10 flex flex-col gap-2
+          ${isMobile 
+            ? 'top-3 left-3' 
+            : 'top-4 right-4'
+          }
+        `}>
+          {/* Map Type Toggle */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <button
+              onClick={() => setMapType('roadmap')}
+              className={`
+                block w-full text-sm font-medium text-left transition-colors
+                ${isMobile ? 'px-3 py-2.5 min-h-[44px]' : 'px-4 py-2'}
+                ${mapType === 'roadmap'
+                  ? 'bg-primary-700 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }
+              `}
+              title="Road Map"
+            >
+              🗺️ {isMobile ? '' : 'Map'}
+            </button>
+            <button
+              onClick={() => setMapType('satellite')}
+              className={`
+                block w-full text-sm font-medium text-left transition-colors border-t border-gray-200 dark:border-gray-700
+                ${isMobile ? 'px-3 py-2.5 min-h-[44px]' : 'px-4 py-2'}
+                ${mapType === 'satellite'
+                  ? 'bg-primary-700 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }
+              `}
+              title="Satellite View"
+            >
+              🛰️ {isMobile ? '' : 'Satellite'}
+            </button>
+          </div>
+
+          {/* Transit Layer Toggle */}
           <button
-            onClick={() => setMapType('roadmap')}
+            onClick={() => setShowTransit(!showTransit)}
             className={`
-              block w-full text-sm font-medium text-left transition-colors
-              ${isMobile ? 'px-3 py-2.5 min-h-[44px]' : 'px-4 py-2'}
-              ${mapType === 'roadmap'
-                ? 'bg-primary-700 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+              text-sm font-medium rounded-lg shadow-lg border transition-colors
+              ${isMobile ? 'px-3 py-2.5 min-h-[44px] min-w-[44px]' : 'px-4 py-2'}
+              ${showTransit
+                ? 'bg-primary-700 text-white border-primary-700'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
               }
             `}
-            title="Road Map"
+            title="Toggle Public Transport"
           >
-            🗺️ {isMobile ? '' : 'Map'}
-          </button>
-          <button
-            onClick={() => setMapType('satellite')}
-            className={`
-              block w-full text-sm font-medium text-left transition-colors border-t border-gray-200 dark:border-gray-700
-              ${isMobile ? 'px-3 py-2.5 min-h-[44px]' : 'px-4 py-2'}
-              ${mapType === 'satellite'
-                ? 'bg-primary-700 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }
-            `}
-            title="Satellite View"
-          >
-            🛰️ {isMobile ? '' : 'Satellite'}
+            🚇 {isMobile ? '' : 'Transit'}
           </button>
         </div>
-
-        {/* Transit Layer Toggle */}
-        <button
-          onClick={() => setShowTransit(!showTransit)}
-          className={`
-            text-sm font-medium rounded-lg shadow-lg border transition-colors
-            ${isMobile ? 'px-3 py-2.5 min-h-[44px] min-w-[44px]' : 'px-4 py-2'}
-            ${showTransit
-              ? 'bg-primary-700 text-white border-primary-700'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }
-          `}
-          title="Toggle Public Transport"
-        >
-          🚇 {isMobile ? '' : 'Transit'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

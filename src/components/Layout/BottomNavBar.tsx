@@ -1,18 +1,18 @@
-import { Map, Table2, Settings, Share2 } from 'lucide-react';
+import { Map, Table2, Settings, Plus } from 'lucide-react';
 import type { ViewMode } from './Header';
 
 interface BottomNavBarProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onSettingsClick: () => void;
-  onShareClick: () => void;
+  onAddClick: () => void;
 }
 
 export function BottomNavBar({
   viewMode,
   onViewModeChange,
   onSettingsClick,
-  onShareClick,
+  onAddClick,
 }: BottomNavBarProps) {
   return (
     <nav
@@ -39,7 +39,7 @@ export function BottomNavBar({
           <span className="text-[10px] font-medium mt-0.5">Map</span>
         </button>
 
-        {/* Table View */}
+        {/* List View */}
         <button
           onClick={() => onViewModeChange('table')}
           className={`
@@ -50,10 +50,20 @@ export function BottomNavBar({
               : 'text-gray-500 dark:text-gray-400'
             }
           `}
-          aria-label="Table view"
+          aria-label="List view"
         >
           <Table2 size={24} strokeWidth={viewMode === 'table' ? 2.5 : 2} />
           <span className="text-[10px] font-medium mt-0.5">List</span>
+        </button>
+
+        {/* Add Property */}
+        <button
+          onClick={onAddClick}
+          className="flex flex-col items-center justify-center w-16 h-full text-primary-600 dark:text-primary-400 active:text-primary-700 dark:active:text-primary-300 transition-colors"
+          aria-label="Add property"
+        >
+          <Plus size={24} strokeWidth={2} />
+          <span className="text-[10px] font-medium mt-0.5">Add</span>
         </button>
 
         {/* Settings */}
@@ -64,16 +74,6 @@ export function BottomNavBar({
         >
           <Settings size={24} />
           <span className="text-[10px] font-medium mt-0.5">Settings</span>
-        </button>
-
-        {/* Share - Last position */}
-        <button
-          onClick={onShareClick}
-          className="flex flex-col items-center justify-center w-16 h-full text-gray-500 dark:text-gray-400 active:text-primary-600 dark:active:text-primary-400 transition-colors"
-          aria-label="Share"
-        >
-          <Share2 size={24} />
-          <span className="text-[10px] font-medium mt-0.5">Share</span>
         </button>
       </div>
     </nav>

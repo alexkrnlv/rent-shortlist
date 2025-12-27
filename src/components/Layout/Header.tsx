@@ -79,15 +79,15 @@ export function Header({
           </div>
         </div>
 
-        {/* Right: Theme toggle only - other actions in bottom nav or settings */}
+        {/* Right: Share button only */}
         <div className="flex items-center gap-1">
           <button
-            onClick={cycleTheme}
+            onClick={onShareClick}
             className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
-            title={`Theme: ${getThemeLabel()}`}
-            aria-label={`Theme: ${getThemeLabel()}`}
+            title="Share"
+            aria-label="Share"
           >
-            {getThemeIcon()}
+            <Share2 size={18} />
           </button>
         </div>
       </header>

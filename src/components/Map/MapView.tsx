@@ -4,7 +4,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 import type { Property } from '../../types';
-import { MapPin, Navigation, Car, PersonStanding, Train, X } from 'lucide-react';
+import { MapPin, Navigation, Train, X, ExternalLink, ChevronUp } from 'lucide-react';
 import { StarRating } from '../ui/StarRating';
 
 const mapContainerStyle = {
@@ -41,32 +41,31 @@ const darkMapStyles: google.maps.MapTypeStyle[] = [
 
 const getMapOptions = (isDark: boolean, isMobile: boolean): google.maps.MapOptions => ({
   disableDefaultUI: false,
-  zoomControl: !isMobile, // Hide on mobile - use pinch instead
+  zoomControl: !isMobile,
   mapTypeControl: false,
   streetViewControl: false,
-  fullscreenControl: !isMobile, // Hide on mobile
+  fullscreenControl: !isMobile,
   styles: isDark ? darkMapStyles : lightMapStyles,
-  // Use greedy for single-finger panning - bottom sheet handles swipe-up
   gestureHandling: 'greedy',
-  // Disable keyboard shortcuts on mobile
   keyboardShortcuts: !isMobile,
 });
 
-interface PropertyMarkerProps {
+// Simple dot marker for properties
+interface PropertyDotMarkerProps {
   property: Property;
   isSelected: boolean;
   onClick: () => void;
 }
 
-function PropertyMarker({ property, isSelected, onClick }: PropertyMarkerProps) {
+function PropertyDotMarker({ property, isSelected, onClick }: PropertyDotMarkerProps) {
   if (!property.coordinates) return null;
 
-  // Determine border color based on rating
-  const getRatingBorderColor = () => {
-    if (!property.rating) return isSelected ? '#1E40AF' : 'white';
-    if (property.rating >= 4) return '#22C55E'; // green for 4-5 stars
-    if (property.rating >= 3) return '#F59E0B'; // amber for 3 stars
-    return isSelected ? '#1E40AF' : 'white';
+  // Property dots are teal/cyan, selected is darker
+  const getMarkerColor = () => {
+    if (isSelected) return '#0891B2'; // cyan-600
+    if (property.rating && property.rating >= 4) return '#14B8A6'; // teal-500
+    if (property.rating && property.rating >= 3) return '#2DD4BF'; // teal-400
+    return '#5EEAD4'; // teal-300
   };
 
   return (
@@ -75,63 +74,37 @@ function PropertyMarker({ property, isSelected, onClick }: PropertyMarkerProps) 
       mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
     >
       <div
-        className="property-marker cursor-pointer"
+        className="cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();
           onClick();
         }}
         style={{
-          transform: 'translate(-50%, -100%)',
+          transform: 'translate(-50%, -50%)',
           zIndex: isSelected ? 1000 : 1,
-          position: 'relative',
         }}
       >
-        <div className={`relative ${isSelected ? 'scale-110' : ''} transition-transform`}>
-          {property.thumbnail ? (
-            <img
-              src={property.thumbnail}
-              alt={property.name}
-              className="w-12 h-12 rounded-lg object-cover shadow-lg"
-              style={{
-                borderColor: getRatingBorderColor(),
-                borderWidth: property.rating && property.rating >= 3 ? '4px' : '3px',
-                borderStyle: 'solid',
-              }}
-            />
-          ) : (
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-100 shadow-lg"
-              style={{
-                borderColor: getRatingBorderColor(),
-                borderWidth: property.rating && property.rating >= 3 ? '4px' : '3px',
-                borderStyle: 'solid',
-              }}
-            >
-              <MapPin size={20} className="text-blue-700" />
-            </div>
-          )}
-          {/* Rating badge */}
-          {property.rating && property.rating > 0 && (
-            <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full w-5 h-5 flex items-center justify-center shadow-md">
-              <span className="text-[10px] font-bold text-white">{property.rating}</span>
-            </div>
-          )}
-          {/* BTR badge */}
-          {property.isBTR && (
-            <div className="absolute -bottom-1 -left-1 bg-purple-600 text-white text-[8px] font-bold px-1 py-0.5 rounded shadow-md">
-              BTR
-            </div>
-          )}
-          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-md text-xs font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
-            {property.price || property.name.substring(0, 15)}
-          </div>
-        </div>
+        <div
+          className={`
+            rounded-full shadow-lg transition-transform duration-150
+            ${isSelected ? 'scale-125' : 'hover:scale-110'}
+          `}
+          style={{
+            width: isSelected ? '20px' : '16px',
+            height: isSelected ? '20px' : '16px',
+            backgroundColor: getMarkerColor(),
+            border: `3px solid white`,
+            boxShadow: isSelected 
+              ? '0 0 0 3px rgba(8, 145, 178, 0.3), 0 4px 12px rgba(0,0,0,0.3)' 
+              : '0 2px 6px rgba(0,0,0,0.3)',
+          }}
+        />
       </div>
     </OverlayView>
   );
 }
 
-// Custom info popup component instead of InfoWindow
+// Desktop property popup (info window style)
 function PropertyPopup({ property, onClose }: { property: Property; onClose: () => void }) {
   if (!property.coordinates) return null;
 
@@ -141,10 +114,10 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
       mapPaneName={OverlayView.FLOAT_PANE}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-[calc(100vw-2rem)] max-w-[320px] min-w-[240px] md:min-w-[280px]"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-[280px]"
         style={{
           transform: 'translate(-50%, -100%)',
-          marginTop: '-70px',
+          marginTop: '-20px',
           position: 'relative',
           zIndex: 2000,
         }}
@@ -152,10 +125,10 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
       >
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 z-10 p-2 md:p-1 bg-white dark:bg-gray-700 rounded-full shadow hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+          className="absolute top-2 right-2 z-10 p-1 bg-white dark:bg-gray-700 rounded-full shadow hover:bg-gray-100 dark:hover:bg-gray-600"
           aria-label="Close popup"
         >
-          <X size={18} className="text-gray-600 dark:text-gray-300 md:w-4 md:h-4" />
+          <X size={16} className="text-gray-600 dark:text-gray-300" />
         </button>
 
         {property.thumbnail && (
@@ -166,48 +139,28 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
           />
         )}
 
-        <div className="p-3 md:p-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-8 md:pr-6 flex-1 text-sm md:text-base">{property.name}</h3>
-            {property.isBTR && (
-              <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded flex-shrink-0">
-                BTR
-              </span>
-            )}
-          </div>
-          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">{property.address}</p>
+        <div className="p-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-6 text-sm">{property.name}</h3>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{property.address}</p>
 
-          {/* Rating */}
           <div className="mb-2">
             <StarRating rating={property.rating} readonly size="sm" />
           </div>
 
           {property.price && (
-            <p className="text-base md:text-lg font-bold text-primary-700 mb-3">{property.price}</p>
+            <p className="text-base font-bold text-primary-700 mb-3">{property.price}</p>
           )}
 
           {property.distances && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
+            <div className="grid grid-cols-2 gap-2 text-xs mb-3">
               <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                <Navigation size={12} className="md:w-3.5 md:h-3.5" />
-                <span>{property.distances.direct.toFixed(1)}km direct</span>
+                <Navigation size={12} />
+                <span>{property.distances.direct.toFixed(1)}km</span>
               </div>
               {property.distances.publicTransport && (
                 <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                  <Train size={12} className="md:w-3.5 md:h-3.5" />
+                  <Train size={12} />
                   <span>{property.distances.publicTransport.duration}</span>
-                </div>
-              )}
-              {property.distances.walking && (
-                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                  <PersonStanding size={12} className="md:w-3.5 md:h-3.5" />
-                  <span>{property.distances.walking.duration}</span>
-                </div>
-              )}
-              {property.distances.driving && (
-                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                  <Car size={12} className="md:w-3.5 md:h-3.5" />
-                  <span>{property.distances.driving.duration}</span>
                 </div>
               )}
             </div>
@@ -218,7 +171,7 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
               href={property.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-center py-3 md:py-2 px-4 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors min-h-[44px] md:min-h-0 flex items-center justify-center"
+              className="block text-center py-2 px-4 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
             >
               View Listing
             </a>
@@ -226,6 +179,99 @@ function PropertyPopup({ property, onClose }: { property: Property; onClose: () 
         </div>
       </div>
     </OverlayView>
+  );
+}
+
+// Mobile property preview card (Google Maps style bottom card)
+function MobilePropertyCard({ 
+  property, 
+  onClose, 
+  onExpand 
+}: { 
+  property: Property; 
+  onClose: () => void;
+  onExpand: () => void;
+}) {
+  return (
+    <div
+      className="fixed left-3 right-3 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-40 animate-slideUp"
+      style={{ 
+        bottom: 'calc(70px + env(safe-area-inset-bottom, 0px))',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Drag handle */}
+      <button 
+        onClick={onExpand}
+        className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center"
+      >
+        <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+      </button>
+
+      <div className="flex gap-3 p-4 pt-6">
+        {/* Thumbnail */}
+        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0">
+          {property.thumbnail ? (
+            <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <MapPin size={24} className="text-gray-400" />
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-1">{property.name}</h3>
+            <button
+              onClick={onClose}
+              className="p-1.5 -mt-1 -mr-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">{property.address}</p>
+          
+          <div className="mt-1.5">
+            <StarRating rating={property.rating} readonly size="sm" />
+          </div>
+
+          <div className="flex items-center justify-between mt-2">
+            {property.price && (
+              <span className="font-bold text-primary-700 dark:text-primary-400">{property.price}</span>
+            )}
+            {property.distances && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Navigation size={12} />
+                {property.distances.direct.toFixed(1)}km
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2 px-4 pb-4">
+        {property.url && (
+          <a
+            href={property.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-primary-600 text-white rounded-xl text-sm font-medium active:bg-primary-700 transition-colors"
+          >
+            <ExternalLink size={16} />
+            View Listing
+          </a>
+        )}
+        <button
+          onClick={onExpand}
+          className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
+        >
+          <ChevronUp size={18} />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -249,7 +295,6 @@ export function MapView() {
     
     checkDarkMode();
     
-    // Watch for class changes on html element
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     
@@ -266,11 +311,9 @@ export function MapView() {
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
-    // Wait for tiles to load before showing markers
     google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
       setMapReady(true);
     });
-    // Initialize transit layer
     const layer = new google.maps.TransitLayer();
     setTransitLayer(layer);
   }, []);
@@ -343,6 +386,18 @@ export function MapView() {
     setShowPopup(false);
   };
 
+  const handleClosePropertyCard = () => {
+    setSelectedProperty(null);
+    setShowPopup(false);
+  };
+
+  const handleExpandPropertyCard = () => {
+    // For now, just open the listing in a new tab
+    if (selectedProperty?.url) {
+      window.open(selectedProperty.url, '_blank');
+    }
+  };
+
   if (loadError) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -386,13 +441,13 @@ export function MapView() {
         onUnmount={onUnmount}
         onClick={handleMapClick}
       >
-        {/* Center Point Marker */}
+        {/* Center Point Marker - Amber/Orange color */}
         <Marker
           position={settings.centerPoint}
           icon={{
             path: google.maps.SymbolPath.CIRCLE,
             scale: isMobile ? 10 : 12,
-            fillColor: '#F59E0B',
+            fillColor: '#F59E0B', // amber-500
             fillOpacity: 1,
             strokeColor: '#FFFFFF',
             strokeWeight: isMobile ? 2 : 3,
@@ -400,9 +455,9 @@ export function MapView() {
           title={settings.centerPoint.name}
         />
 
-        {/* Property Markers - only render when map is ready */}
+        {/* Property Markers - Teal dots */}
         {mapReady && filteredProperties.map((property) => (
-          <PropertyMarker
+          <PropertyDotMarker
             key={property.id}
             property={property}
             isSelected={property.id === selectedPropertyId}
@@ -410,8 +465,8 @@ export function MapView() {
           />
         ))}
 
-        {/* Property Popup */}
-        {mapReady && selectedProperty?.coordinates && showPopup && (
+        {/* Desktop: Property Popup */}
+        {!isMobile && mapReady && selectedProperty?.coordinates && showPopup && (
           <PropertyPopup
             property={selectedProperty}
             onClose={() => setShowPopup(false)}
@@ -419,11 +474,20 @@ export function MapView() {
         )}
       </GoogleMap>
 
-      {/* Map Controls Overlay - repositioned for mobile */}
+      {/* Mobile: Property Preview Card at bottom */}
+      {isMobile && selectedProperty && showPopup && (
+        <MobilePropertyCard
+          property={selectedProperty}
+          onClose={handleClosePropertyCard}
+          onExpand={handleExpandPropertyCard}
+        />
+      )}
+
+      {/* Map Controls Overlay */}
       <div className={`
         absolute z-10 flex flex-col gap-2
         ${isMobile 
-          ? 'bottom-[calc(15vh+80px)] left-3' 
+          ? 'top-3 left-3' 
           : 'top-4 right-4'
         }
       `}>
@@ -475,7 +539,6 @@ export function MapView() {
           🚇 {isMobile ? '' : 'Transit'}
         </button>
       </div>
-
     </div>
   );
 }

@@ -601,3 +601,76 @@ html.dark body {
     transition: none;
   }
 }
+
+/* ==========================================
+   GOOGLE PLACES AUTOCOMPLETE STYLING
+   ========================================== */
+
+/* Ensure Google Places autocomplete dropdown appears above modals */
+.pac-container {
+  z-index: 10000 !important;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e7eb;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin-top: 4px;
+}
+
+.dark .pac-container {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.pac-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s ease;
+}
+
+.dark .pac-item {
+  border-bottom-color: #374151;
+  color: #f3f4f6;
+}
+
+.pac-item:hover,
+.pac-item.pac-item-selected {
+  background-color: #f3f4f6;
+}
+
+.dark .pac-item:hover,
+.dark .pac-item.pac-item-selected {
+  background-color: #374151;
+}
+
+.pac-item:last-child {
+  border-bottom: none;
+}
+
+.pac-icon {
+  margin-right: 10px;
+}
+
+.pac-item-query {
+  font-weight: 500;
+  color: #111827;
+}
+
+.dark .pac-item-query {
+  color: #f9fafb;
+}
+
+.pac-matched {
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.dark .pac-matched {
+  color: #60a5fa;
+}
+
+/* Hide the "Powered by Google" logo for cleaner look */
+.pac-logo::after {
+  display: none;
+}

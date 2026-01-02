@@ -22,6 +22,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [centerName, setCenterName] = useState(settings.centerPoint.name);
   const [centerLat, setCenterLat] = useState(settings.centerPoint.lat.toString());
   const [centerLng, setCenterLng] = useState(settings.centerPoint.lng.toString());
+  const [selectedCity, setSelectedCity] = useState<CityContext | null>(settings.project?.city || null);
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setCenterName(settings.centerPoint.name);
       setCenterLat(settings.centerPoint.lat.toString());
       setCenterLng(settings.centerPoint.lng.toString());
+      setSelectedCity(settings.project?.city || null);
     }
   }, [isOpen, settings]);
 
@@ -42,6 +44,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleSave = async () => {
+    // Save city if changed
+    if (selectedCity && cityHasChanged) {
+      setCity(selectedCity);
+    }
+
     const newCenter = {
       name: centerName,
       lat: parseFloat(centerLat) || 0,
@@ -49,14 +56,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     };
     
     // Check if center point actually changed
-    const hasChanged = 
+    const centerHasChanged = 
       newCenter.lat !== settings.centerPoint.lat || 
       newCenter.lng !== settings.centerPoint.lng;
     
     setCenterPoint(newCenter);
     
     // Recalculate distances if center changed and there are properties
-    if (hasChanged && properties.length > 0) {
+    if (centerHasChanged && properties.length > 0) {
       setIsRecalculating(true);
       try {
         await recalculateDistances({ lat: newCenter.lat, lng: newCenter.lng });
@@ -69,7 +76,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose();
   };
 
-  // Handle city selection from Google Places Autocomplete
+  // Handle city selection from Google Places Autocomplete (save to local state)
   const handleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
     const cityContext: CityContext = {
       name: city.name,
@@ -78,14 +85,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       lat: city.lat,
       lng: city.lng,
     };
-    setCity(cityContext);
+    setSelectedCity(cityContext);
     // Update center to city center
     setCenterName(`City Center, ${city.name}`);
     setCenterLat(city.lat.toString());
     setCenterLng(city.lng.toString());
   };
 
-  const currentCity = settings.project?.city;
+  // Check if city has changed
+  const cityHasChanged = selectedCity?.name !== settings.project?.city?.name ||
+    selectedCity?.country !== settings.project?.city?.country;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="md">
@@ -97,19 +106,39 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             City / Region
           </h3>
           
-          {/* Current city display */}
-          {currentCity && (
-            <div className="flex items-center gap-3 px-4 py-3 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-lg">
-              <MapPin className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-              <span className="font-medium text-primary-700 dark:text-primary-300">
-                {currentCity.name}, {currentCity.countryName}
-              </span>
+          {/* Selected city display */}
+          {selectedCity && (
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
+              cityHasChanged 
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                : 'bg-primary-50 dark:bg-primary-900/30 border-primary-200 dark:border-primary-800'
+            }`}>
+              <MapPin className={`w-5 h-5 ${
+                cityHasChanged 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-primary-600 dark:text-primary-400'
+              }`} />
+              <div className="flex-1">
+                {cityHasChanged && (
+                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">New City Selected</span>
+                )}
+                <span className={`font-medium block ${
+                  cityHasChanged 
+                    ? 'text-green-700 dark:text-green-300' 
+                    : 'text-primary-700 dark:text-primary-300'
+                }`}>
+                  {selectedCity.name}, {selectedCity.countryName}
+                </span>
+              </div>
+              {cityHasChanged && (
+                <span className="text-xs text-green-600 dark:text-green-400">Click Save to apply</span>
+              )}
             </div>
           )}
           
           {/* City autocomplete */}
           <CityAutocomplete
-            placeholder={currentCity ? "Change city..." : "Search for a city..."}
+            placeholder={selectedCity ? "Search for a different city..." : "Search for a city..."}
             onCitySelect={handleCitySelect}
           />
         </div>
@@ -123,13 +152,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Location Search with Google Places Autocomplete */}
           <PlacesAutocomplete
-            placeholder={currentCity ? `Search for a location in ${currentCity.name}...` : 'Search for a location...'}
+            placeholder={selectedCity ? `Search for a location in ${selectedCity.name}...` : 'Search for a location...'}
             onPlaceSelect={handlePlaceSelect}
-            restrictToCity={currentCity ? {
-              name: currentCity.name,
-              country: currentCity.country,
-              lat: currentCity.lat,
-              lng: currentCity.lng,
+            restrictToCity={selectedCity ? {
+              name: selectedCity.name,
+              country: selectedCity.country,
+              lat: selectedCity.lat,
+              lng: selectedCity.lng,
             } : undefined}
             types={['establishment', 'geocode']}
           />

@@ -49,9 +49,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleSave = async () => {
+    console.log('💾 Save clicked. selectedCity:', selectedCity);
     // Always save city if one is selected
     if (selectedCity) {
+      console.log('💾 Calling setCity with:', selectedCity.name);
       setCity(selectedCity);
+    } else {
+      console.log('⚠️ No selectedCity to save!');
     }
 
     const newCenter = {
@@ -83,6 +87,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // Handle city selection from list (save to local state)
   const handleCitySelect = (city: CityContext) => {
+    console.log('🏙️ City clicked:', city.name, city);
     setSelectedCity(city);
     // Update center to city center
     setCenterName(`City Center, ${city.name}`);

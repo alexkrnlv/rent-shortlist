@@ -107,6 +107,7 @@ export const useSettingsStore = create<SettingsState>()(
         })),
       setCity: (city: CityContext) =>
         set((state) => {
+          console.log('🏪 Store setCity called with:', city.name, city);
           // Create a default center point at city center when city is set
           const newCenterPoint: CenterPoint = {
             name: `City Center, ${city.name}`,
@@ -121,6 +122,7 @@ export const useSettingsStore = create<SettingsState>()(
           if (!state.settings.project?.centerPoint?.lat) {
             newProject.centerPoint = newCenterPoint;
           }
+          console.log('🏪 New project will be:', newProject);
           return {
             settings: {
               ...state.settings,

@@ -58,7 +58,7 @@ export function Layout({
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {header}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* Backdrop overlay for mobile sidebar - kept for tablet transition */}
         {viewMode === 'map' && isMobileSidebarOpen && (
           <div
@@ -91,8 +91,10 @@ export function Layout({
         )}
         
         {/* Main Content Area */}
-        <main className="flex-1 relative w-full">
-          {viewMode === 'map' ? map : table}
+        <main className="flex-1 min-h-0 relative overflow-hidden">
+          <div className="absolute inset-0">
+            {viewMode === 'map' ? map : table}
+          </div>
         </main>
       </div>
     </div>

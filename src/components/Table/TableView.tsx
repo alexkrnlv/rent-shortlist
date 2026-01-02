@@ -231,6 +231,7 @@ export function TableView({ onShowOnMap }: TableViewProps) {
     addTagToProperty,
     removeTagFromProperty,
   } = usePropertyStore();
+
   
   const properties = getFilteredProperties();
   const [showFilters, setShowFilters] = useState(false);
@@ -313,9 +314,9 @@ export function TableView({ onShowOnMap }: TableViewProps) {
   }
 
   return (
-    <div className="min-h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-full md:h-full flex flex-col md:overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       {/* Search & Filter Bar */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-4 py-3 flex items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
@@ -520,6 +521,7 @@ export function TableView({ onShowOnMap }: TableViewProps) {
         )}
       </div>
 
+
       {/* No results message */}
       {properties.length === 0 && hasActiveFilters && (
         <div className="flex-1 flex items-center justify-center">
@@ -537,9 +539,8 @@ export function TableView({ onShowOnMap }: TableViewProps) {
 
       {/* Desktop Table */}
       {properties.length > 0 && (
-        <div className="hidden md:flex flex-col flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto">
-            <table className="w-full border-collapse">
+        <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+            <table className="w-full border-collapse table-auto">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
                   <th className="py-3 px-3 text-left font-semibold text-sm w-14"></th>
@@ -771,7 +772,6 @@ export function TableView({ onShowOnMap }: TableViewProps) {
                 ))}
               </tbody>
             </table>
-          </div>
         </div>
       )}
 

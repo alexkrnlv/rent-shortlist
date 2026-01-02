@@ -53,14 +53,12 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete, isNewSession = 
     return acc;
   }, {} as Record<string, CityContext[]>);
 
-  // Handle city selection from popular list
+  // Handle city selection from popular list (just select, don't proceed)
   const handleCitySelect = (city: CityContext) => {
     setSelectedCity(city);
-    setCity(city);
-    setStep('location');
   };
 
-  // Handle city selection from Google Places Autocomplete
+  // Handle city selection from Google Places Autocomplete (just select, don't proceed)
   const handleGoogleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
     const cityContext: CityContext = {
       name: city.name,
@@ -70,7 +68,12 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete, isNewSession = 
       lng: city.lng,
     };
     setSelectedCity(cityContext);
-    setCity(cityContext);
+  };
+
+  // Confirm city selection and proceed to location step
+  const handleCityConfirm = () => {
+    if (!selectedCity) return;
+    setCity(selectedCity);
     setStep('location');
   };
 
@@ -148,15 +151,39 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete, isNewSession = 
               </div>
             </div>
 
+            {/* Selected city display */}
+            {selectedCity && (
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
+                      <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-green-600 dark:text-green-400 font-medium">Selected City</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        {selectedCity.name}, {selectedCity.countryName}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="primary" onClick={handleCityConfirm}>
+                    Continue →
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Google Places City Autocomplete */}
             <div className="space-y-2">
               <CityAutocomplete
-                placeholder="Search for any city worldwide..."
+                placeholder={selectedCity ? "Search for a different city..." : "Search for any city worldwide..."}
                 onCitySelect={handleGoogleCitySelect}
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Or select from popular cities below
-              </p>
+              {!selectedCity && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  Or select from popular cities below
+                </p>
+              )}
             </div>
 
             {/* Filter popular cities */}

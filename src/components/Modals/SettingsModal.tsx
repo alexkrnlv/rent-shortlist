@@ -3,10 +3,10 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { PlacesAutocomplete, CityAutocomplete } from '../ui/PlacesAutocomplete';
-import { useSettingsStore, POPULAR_CITIES } from '../../store/useSettingsStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
-import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor, Globe, Check, Search } from 'lucide-react';
+import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor, Globe, Navigation } from 'lucide-react';
 import type { ThemeMode, CityContext } from '../../types';
 
 interface SettingsModalProps {
@@ -25,9 +25,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [selectedCity, setSelectedCity] = useState<CityContext | null>(settings.project?.city || null);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
-  const [cityFilter, setCityFilter] = useState('');
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
-  // Only initialize state when modal opens, not when settings change
+  // Only initialize state when modal opens
   useEffect(() => {
     if (isOpen) {
       setCenterName(settings.centerPoint.name);
@@ -35,27 +35,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setCenterLng(settings.centerPoint.lng.toString());
       setSelectedCity(settings.project?.city || null);
       setShowCityPicker(false);
-      setCityFilter('');
+      setShowLocationPicker(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Handle location selection from Google Places
-  const handlePlaceSelect = (place: { name: string; address: string; lat: number; lng: number }) => {
-    const displayName = place.address || (selectedCity ? `${place.name}, ${selectedCity.name}` : place.name);
-    setCenterName(displayName);
-    setCenterLat(place.lat.toString());
-    setCenterLng(place.lng.toString());
-  };
-
   const handleSave = async () => {
-    console.log('💾 Save clicked. selectedCity:', selectedCity);
-    // Always save city if one is selected
+    // Save city if one is selected
     if (selectedCity) {
-      console.log('💾 Calling setCity with:', selectedCity.name);
       setCity(selectedCity);
-    } else {
-      console.log('⚠️ No selectedCity to save!');
     }
 
     const newCenter = {
@@ -64,14 +52,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       lng: parseFloat(centerLng) || 0,
     };
     
-    // Check if center point actually changed
     const centerHasChanged = 
       newCenter.lat !== settings.centerPoint.lat || 
       newCenter.lng !== settings.centerPoint.lng;
     
     setCenterPoint(newCenter);
     
-    // Recalculate distances if center changed and there are properties
     if (centerHasChanged && properties.length > 0) {
       setIsRecalculating(true);
       try {
@@ -85,20 +71,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose();
   };
 
-  // Handle city selection from list (save to local state)
-  const handleCitySelect = (city: CityContext) => {
-    console.log('🏙️ City clicked:', city.name, city);
-    setSelectedCity(city);
-    // Update center to city center
-    setCenterName(`City Center, ${city.name}`);
-    setCenterLat(city.lat.toString());
-    setCenterLng(city.lng.toString());
-    setShowCityPicker(false);
-    setCityFilter('');
-  };
-
   // Handle city selection from Google Places Autocomplete
-  const handleGoogleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
+  const handleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
     const cityContext: CityContext = {
       name: city.name,
       country: city.country,
@@ -106,18 +80,32 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       lat: city.lat,
       lng: city.lng,
     };
-    handleCitySelect(cityContext);
+    setSelectedCity(cityContext);
+    // Update center to city center
+    setCenterName(`City Center, ${city.name}`);
+    setCenterLat(city.lat.toString());
+    setCenterLng(city.lng.toString());
+    setShowCityPicker(false);
+  };
+
+  // Handle location selection from Google Places
+  const handleLocationSelect = (place: { name: string; address: string; lat: number; lng: number }) => {
+    const displayName = place.address || (selectedCity ? `${place.name}, ${selectedCity.name}` : place.name);
+    setCenterName(displayName);
+    setCenterLat(place.lat.toString());
+    setCenterLng(place.lng.toString());
+    setShowLocationPicker(false);
   };
 
   // Check if city has changed
   const cityHasChanged = selectedCity?.name !== settings.project?.city?.name ||
     selectedCity?.country !== settings.project?.city?.country;
 
-  // Filter cities based on search
-  const filteredCities = POPULAR_CITIES.filter(city =>
-    city.name.toLowerCase().includes(cityFilter.toLowerCase()) ||
-    city.countryName.toLowerCase().includes(cityFilter.toLowerCase())
-  );
+  // Check if location has changed
+  const locationHasChanged = 
+    centerName !== settings.centerPoint.name ||
+    centerLat !== settings.centerPoint.lat.toString() ||
+    centerLng !== settings.centerPoint.lng.toString();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="md">
@@ -129,25 +117,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             City / Region
           </h3>
           
-          {/* Selected city display with change button */}
+          {/* Current city display */}
           <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
             cityHasChanged 
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
               : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
           }`}>
-            <MapPin className={`w-5 h-5 ${
-              cityHasChanged 
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-gray-500 dark:text-gray-400'
+            <Globe className={`w-5 h-5 ${
+              cityHasChanged ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
             }`} />
             <div className="flex-1">
               {cityHasChanged && (
-                <span className="text-xs text-green-600 dark:text-green-400 font-medium block">✓ New city selected</span>
+                <span className="text-xs text-green-600 dark:text-green-400 font-medium block">✓ Changed</span>
               )}
               <span className={`font-medium ${
-                cityHasChanged 
-                  ? 'text-green-700 dark:text-green-300' 
-                  : 'text-gray-900 dark:text-gray-100'
+                cityHasChanged ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'
               }`}>
                 {selectedCity ? `${selectedCity.name}, ${selectedCity.countryName}` : 'No city selected'}
               </span>
@@ -155,122 +139,127 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <Button 
               variant={showCityPicker ? "ghost" : "secondary"} 
               size="sm"
-              onClick={() => setShowCityPicker(!showCityPicker)}
+              onClick={() => {
+                setShowCityPicker(!showCityPicker);
+                setShowLocationPicker(false);
+              }}
             >
-              {showCityPicker ? '✕ Cancel' : 'Change City'}
+              {showCityPicker ? '✕' : 'Change'}
             </Button>
           </div>
 
-          {/* City picker panel */}
+          {/* City picker - single autocomplete field */}
           {showCityPicker && (
-            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
-              {/* Instructions */}
+            <div className="p-4 bg-white dark:bg-gray-800 border border-primary-200 dark:border-primary-700 rounded-lg space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                👆 <strong>Click on a city</strong> to select it:
+                Type a city name and <strong>click on a suggestion</strong> to select:
               </p>
-
-              {/* Filter cities */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  placeholder="Type to filter cities (e.g. London, Paris, NYC...)"
-                  className="w-full pl-9 pr-4 py-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  autoFocus
-                />
-              </div>
-
-              {/* City grid - clickable buttons */}
-              <div className="max-h-64 overflow-y-auto">
-                {filteredCities.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {filteredCities.map((city) => (
-                      <button
-                        key={`${city.name}-${city.country}`}
-                        onClick={() => handleCitySelect(city)}
-                        className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-all ${
-                          selectedCity?.name === city.name && selectedCity?.country === city.country
-                            ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/50 ring-2 ring-primary-500'
-                            : 'border-gray-200 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50 dark:hover:border-primary-600 dark:hover:bg-primary-900/30'
-                        }`}
-                      >
-                        {selectedCity?.name === city.name && selectedCity?.country === city.country ? (
-                          <Check className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
-                        ) : (
-                          <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 block truncate">{city.name}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{city.countryName}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <p className="mb-2">No cities match "{cityFilter}"</p>
-                    <p className="text-xs">Try a different search term</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Optional: Google Places for cities not in list */}
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Can't find your city? Search worldwide:</p>
-                <CityAutocomplete
-                  placeholder="Type and select from dropdown..."
-                  onCitySelect={handleGoogleCitySelect}
-                />
-              </div>
+              <CityAutocomplete
+                placeholder="Search for any city worldwide..."
+                onCitySelect={handleCitySelect}
+                autoFocus
+              />
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                Start typing and select from the dropdown that appears
+              </p>
             </div>
           )}
         </div>
 
-        {/* Center Point Section */}
-        <div className="space-y-4">
+        {/* Commute Destination Section */}
+        <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <MapPin size={16} />
-            Commute Destination (for distance calculations)
+            <Navigation size={16} />
+            Commute Destination
           </h3>
-
-          {/* Location Search with Google Places Autocomplete */}
-          <PlacesAutocomplete
-            placeholder={selectedCity ? `Search for a location in ${selectedCity.name}...` : 'Search for a location...'}
-            onPlaceSelect={handlePlaceSelect}
-            restrictToCity={selectedCity ? {
-              name: selectedCity.name,
-              country: selectedCity.country,
-              lat: selectedCity.lat,
-              lng: selectedCity.lng,
-            } : undefined}
-            types={['establishment', 'geocode']}
-          />
-
-          <Input
-            label="Location Name"
-            value={centerName}
-            onChange={(e) => setCenterName(e.target.value)}
-            placeholder="e.g., My Office"
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Latitude"
-              type="number"
-              step="any"
-              value={centerLat}
-              onChange={(e) => setCenterLat(e.target.value)}
-            />
-            <Input
-              label="Longitude"
-              type="number"
-              step="any"
-              value={centerLng}
-              onChange={(e) => setCenterLng(e.target.value)}
-            />
+          
+          {/* Current location display */}
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
+            locationHasChanged 
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+              : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+          }`}>
+            <MapPin className={`w-5 h-5 ${
+              locationHasChanged ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+            }`} />
+            <div className="flex-1">
+              {locationHasChanged && (
+                <span className="text-xs text-green-600 dark:text-green-400 font-medium block">✓ Changed</span>
+              )}
+              <span className={`font-medium ${
+                locationHasChanged ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'
+              }`}>
+                {centerName || 'No location set'}
+              </span>
+              {centerLat && centerLng && parseFloat(centerLat) !== 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                  {parseFloat(centerLat).toFixed(4)}, {parseFloat(centerLng).toFixed(4)}
+                </span>
+              )}
+            </div>
+            <Button 
+              variant={showLocationPicker ? "ghost" : "secondary"} 
+              size="sm"
+              onClick={() => {
+                setShowLocationPicker(!showLocationPicker);
+                setShowCityPicker(false);
+              }}
+            >
+              {showLocationPicker ? '✕' : 'Change'}
+            </Button>
           </div>
+
+          {/* Location picker - single autocomplete field */}
+          {showLocationPicker && (
+            <div className="p-4 bg-white dark:bg-gray-800 border border-primary-200 dark:border-primary-700 rounded-lg space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Search for your office, school, or any place and <strong>click on a suggestion</strong>:
+              </p>
+              <PlacesAutocomplete
+                placeholder={selectedCity ? `Search in ${selectedCity.name}...` : 'Search for a place...'}
+                onPlaceSelect={handleLocationSelect}
+                restrictToCity={selectedCity ? {
+                  name: selectedCity.name,
+                  country: selectedCity.country,
+                  lat: selectedCity.lat,
+                  lng: selectedCity.lng,
+                } : undefined}
+                types={['establishment', 'geocode']}
+                autoFocus
+              />
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                Start typing and select from the dropdown that appears
+              </p>
+              
+              {/* Manual entry option */}
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Or enter coordinates manually:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    label="Latitude"
+                    type="number"
+                    step="any"
+                    value={centerLat}
+                    onChange={(e) => setCenterLat(e.target.value)}
+                  />
+                  <Input
+                    label="Longitude"
+                    type="number"
+                    step="any"
+                    value={centerLng}
+                    onChange={(e) => setCenterLng(e.target.value)}
+                  />
+                </div>
+                <Input
+                  label="Location Name"
+                  value={centerName}
+                  onChange={(e) => setCenterName(e.target.value)}
+                  placeholder="e.g., My Office"
+                  className="mt-2"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Theme Section */}
@@ -300,9 +289,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Auto mode follows your system preference.
-          </p>
         </div>
 
         {/* Tutorial Section */}
@@ -340,7 +326,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {isRecalculating ? (
               <>
                 <RefreshCw size={16} className="mr-2 animate-spin" />
-                Recalculating...
+                Saving...
               </>
             ) : (
               'Save Settings'

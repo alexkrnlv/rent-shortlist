@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { CityAutocomplete, PlacesAutocomplete } from '../ui/PlacesAutocomplete';
 import { useSettingsStore, POPULAR_CITIES } from '../../store/useSettingsStore';
+import { usePropertyStore } from '../../store/usePropertyStore';
 import { MapPin, Search, Globe, Building2 } from 'lucide-react';
 import type { CityContext, CenterPoint } from '../../types';
 
@@ -10,12 +11,14 @@ interface ProjectSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
+  isNewSession?: boolean; // When true, clears all properties on complete
 }
 
 type SetupStep = 'city' | 'location';
 
-export function ProjectSetupModal({ isOpen, onClose, onComplete }: ProjectSetupModalProps) {
+export function ProjectSetupModal({ isOpen, onClose, onComplete, isNewSession = false }: ProjectSetupModalProps) {
   const { settings, setCity, setCenterPoint } = useSettingsStore();
+  const { clearAllProperties } = usePropertyStore();
   const [step, setStep] = useState<SetupStep>('city');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState<CityContext | null>(null);
@@ -25,8 +28,10 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete }: ProjectSetupM
     if (isOpen) {
       setStep('city');
       setSearchQuery('');
-      // Pre-select current city if one exists
-      if (settings.project?.city) {
+      // For new sessions, don't pre-select the current city
+      if (isNewSession) {
+        setSelectedCity(null);
+      } else if (settings.project?.city) {
         setSelectedCity(settings.project.city);
       } else {
         setSelectedCity(null);
@@ -77,6 +82,12 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete }: ProjectSetupM
       lng: place.lng,
     };
     setCenterPoint(centerPoint);
+    
+    // Clear properties if starting a new session
+    if (isNewSession) {
+      clearAllProperties();
+    }
+    
     onComplete?.();
     onClose();
   };
@@ -91,6 +102,12 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete }: ProjectSetupM
       lng: selectedCity.lng,
     };
     setCenterPoint(centerPoint);
+    
+    // Clear properties if starting a new session
+    if (isNewSession) {
+      clearAllProperties();
+    }
+    
     onComplete?.();
     onClose();
   };
@@ -101,11 +118,18 @@ export function ProjectSetupModal({ isOpen, onClose, onComplete }: ProjectSetupM
     handleUseCityCenter();
   };
 
+  const getTitle = () => {
+    if (isNewSession) {
+      return step === 'city' ? 'New Search: Select City' : 'New Search: Set Commute Destination';
+    }
+    return step === 'city' ? 'Select Your City' : 'Set Your Commute Destination';
+  };
+
   return (
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title={step === 'city' ? 'Select Your City' : 'Set Your Commute Destination'}
+      title={getTitle()}
       size="lg"
     >
       <div className="space-y-5">

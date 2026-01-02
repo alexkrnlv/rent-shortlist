@@ -16,7 +16,6 @@ import { useTutorialStore } from './store/useTutorialStore';
 import { useExtensionSync } from './hooks/useExtensionSync';
 import { useUrlSession } from './hooks/useUrlSession';
 import { hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
-import { buildSessionState } from './utils/urlSession';
 
 function App() {
   // Sync with Chrome extension (shows pending properties in sidebar)
@@ -30,6 +29,7 @@ function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showProjectSetupModal, setShowProjectSetupModal] = useState(false);
+  const [isNewSessionSetup, setIsNewSessionSetup] = useState(false);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -107,44 +107,16 @@ function App() {
     }
   };
 
-  // Handle new session creation
-  const handleNewSession = async () => {
-    try {
-      // Build a proper empty session with current settings
-      const emptySessionData = buildSessionState(
-        [], // empty properties
-        [], // empty tags
-        settings.centerPoint, // current center point
-        {
-          maxDistance: null,
-          minPrice: null,
-          maxPrice: null,
-          minRating: null,
-          btrOnly: false,
-          selectedTags: [],
-          searchQuery: '',
-          sortBy: 'createdAt',
-          sortDirection: 'desc',
-        }, // default filters
-        settings.project // include project/city data
-      );
-      
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          data: emptySessionData
-        }),
-      });
-      
-      if (response.ok) {
-        const { id } = await response.json();
-        // Open in new tab
-        window.open(`/s/${id}`, '_blank');
-      }
-    } catch (error) {
-      console.error('Failed to create new session:', error);
-    }
+  // Handle new session creation - show project setup modal
+  const handleNewSession = () => {
+    setIsNewSessionSetup(true);
+    setShowProjectSetupModal(true);
+  };
+
+  // Handle project setup modal close
+  const handleProjectSetupClose = () => {
+    setShowProjectSetupModal(false);
+    setIsNewSessionSetup(false);
   };
 
   // Handle project setup completion
@@ -215,8 +187,9 @@ function App() {
 
       <ProjectSetupModal
         isOpen={showProjectSetupModal}
-        onClose={() => setShowProjectSetupModal(false)}
+        onClose={handleProjectSetupClose}
         onComplete={handleProjectSetupComplete}
+        isNewSession={isNewSessionSetup}
       />
 
       {/* Interactive Onboarding Tutorial */}

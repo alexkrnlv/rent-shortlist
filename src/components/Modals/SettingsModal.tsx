@@ -3,10 +3,10 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { PlacesAutocomplete, CityAutocomplete } from '../ui/PlacesAutocomplete';
-import { useSettingsStore, POPULAR_CITIES } from '../../store/useSettingsStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
-import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor, Globe, Search, ChevronDown } from 'lucide-react';
+import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor, Globe } from 'lucide-react';
 import type { ThemeMode, CityContext } from '../../types';
 
 interface SettingsModalProps {
@@ -23,18 +23,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [centerLat, setCenterLat] = useState(settings.centerPoint.lat.toString());
   const [centerLng, setCenterLng] = useState(settings.centerPoint.lng.toString());
   const [isRecalculating, setIsRecalculating] = useState(false);
-  
-  // City selection state
-  const [showCitySelector, setShowCitySelector] = useState(false);
-  const [citySearch, setCitySearch] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setCenterName(settings.centerPoint.name);
       setCenterLat(settings.centerPoint.lat.toString());
       setCenterLng(settings.centerPoint.lng.toString());
-      setShowCitySelector(false);
-      setCitySearch('');
     }
   }, [isOpen, settings]);
 
@@ -75,18 +69,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose();
   };
 
-  const handleCitySelect = (city: CityContext) => {
-    setCity(city);
-    setShowCitySelector(false);
-    setCitySearch('');
-    // Update center to city center
-    setCenterName(`City Center, ${city.name}`);
-    setCenterLat(city.lat.toString());
-    setCenterLng(city.lng.toString());
-  };
-
   // Handle city selection from Google Places Autocomplete
-  const handleGoogleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
+  const handleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
     const cityContext: CityContext = {
       name: city.name,
       country: city.country,
@@ -94,14 +78,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       lat: city.lat,
       lng: city.lng,
     };
-    handleCitySelect(cityContext);
+    setCity(cityContext);
+    // Update center to city center
+    setCenterName(`City Center, ${city.name}`);
+    setCenterLat(city.lat.toString());
+    setCenterLng(city.lng.toString());
   };
-
-  // Filter cities
-  const filteredCities = POPULAR_CITIES.filter(city =>
-    city.name.toLowerCase().includes(citySearch.toLowerCase()) ||
-    city.countryName.toLowerCase().includes(citySearch.toLowerCase())
-  );
 
   const currentCity = settings.project?.city;
 
@@ -115,63 +97,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             City / Region
           </h3>
           
-          <div className="relative">
-            <button
-              onClick={() => setShowCitySelector(!showCitySelector)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {currentCity ? `${currentCity.name}, ${currentCity.countryName}` : 'Select a city...'}
-                </span>
-              </div>
-              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showCitySelector ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showCitySelector && (
-              <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-80 overflow-hidden">
-                {/* Google Places City Search */}
-                <div className="p-2 border-b border-gray-100 dark:border-gray-700">
-                  <CityAutocomplete
-                    placeholder="Search any city worldwide..."
-                    onCitySelect={handleGoogleCitySelect}
-                  />
-                </div>
-                
-                {/* Popular cities filter */}
-                <div className="p-2 border-b border-gray-100 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Or select from popular cities:</p>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={citySearch}
-                      onChange={(e) => setCitySearch(e.target.value)}
-                      placeholder="Filter popular cities..."
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="max-h-40 overflow-y-auto p-1">
-                  {filteredCities.map((city) => (
-                    <button
-                      key={`${city.name}-${city.country}`}
-                      onClick={() => handleCitySelect(city)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm transition-colors ${
-                        currentCity?.name === city.name && currentCity?.country === city.country
-                          ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
-                      }`}
-                    >
-                      <span className="flex-1">{city.name}</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{city.countryName}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Current city display */}
+          {currentCity && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-lg">
+              <MapPin className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              <span className="font-medium text-primary-700 dark:text-primary-300">
+                {currentCity.name}, {currentCity.countryName}
+              </span>
+            </div>
+          )}
+          
+          {/* City autocomplete */}
+          <CityAutocomplete
+            placeholder={currentCity ? "Change city..." : "Search for a city..."}
+            onCitySelect={handleCitySelect}
+          />
         </div>
 
         {/* Center Point Section */}

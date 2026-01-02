@@ -25,6 +25,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [selectedCity, setSelectedCity] = useState<CityContext | null>(settings.project?.city || null);
   const [isRecalculating, setIsRecalculating] = useState(false);
 
+  // Only initialize state when modal opens, not when settings change
   useEffect(() => {
     if (isOpen) {
       setCenterName(settings.centerPoint.name);
@@ -32,7 +33,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setCenterLng(settings.centerPoint.lng.toString());
       setSelectedCity(settings.project?.city || null);
     }
-  }, [isOpen, settings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Handle location selection from Google Places
   const handlePlaceSelect = (place: { name: string; address: string; lat: number; lng: number }) => {
@@ -44,8 +46,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleSave = async () => {
-    // Save city if changed
-    if (selectedCity && cityHasChanged) {
+    // Always save city if one is selected
+    if (selectedCity) {
       setCity(selectedCity);
     }
 

@@ -44,8 +44,31 @@ export interface CenterPoint {
   lng: number;
 }
 
+// City/Location context for geocoding and map bounds
+export interface CityContext {
+  name: string;           // Display name (e.g., "London, UK")
+  country: string;        // Country code (e.g., "GB")
+  countryName: string;    // Full country name (e.g., "United Kingdom")
+  lat: number;            // City center latitude
+  lng: number;            // City center longitude
+  bounds?: {              // Optional map bounds
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  };
+}
+
+// Project contains all data for a single property search project
+export interface Project {
+  city: CityContext;
+  centerPoint: CenterPoint;  // Where to calculate distances to (e.g., office location)
+}
+
 export interface Settings {
-  centerPoint: CenterPoint;
+  project: Project | null;  // Current project with city and center point
+  // Legacy: centerPoint moved to project.centerPoint
+  centerPoint: CenterPoint; // Kept for backwards compatibility
   googleMapsApiKey: string;
   claudeApiKey: string;
   themeMode: ThemeMode;

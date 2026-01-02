@@ -1,4 +1,4 @@
-import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor } from 'lucide-react';
+import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor, MapPin } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 import type { ThemeMode } from '../../types';
@@ -31,6 +31,9 @@ export function Header({
 }: HeaderProps) {
   const { settings, setThemeMode } = useSettingsStore();
   const isMobile = useMobileDetect();
+  
+  // Get current city name for display
+  const cityName = settings.project?.city?.name;
 
   const cycleTheme = () => {
     const modes: ThemeMode[] = ['light', 'dark', 'auto'];
@@ -75,7 +78,16 @@ export function Header({
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">Rent Shortlist</h1>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">{propertyCount} properties</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              {cityName && (
+                <>
+                  <MapPin size={10} />
+                  <span className="truncate max-w-[80px]">{cityName}</span>
+                  <span className="mx-0.5">•</span>
+                </>
+              )}
+              {propertyCount} properties
+            </p>
           </div>
         </div>
 
@@ -107,7 +119,16 @@ export function Header({
         </div>
         <div>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Rent Shortlist</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{propertyCount} properties</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+            {cityName && (
+              <>
+                <MapPin size={11} />
+                <span>{cityName}</span>
+                <span className="mx-0.5">•</span>
+              </>
+            )}
+            {propertyCount} properties
+          </p>
         </div>
       </div>
 

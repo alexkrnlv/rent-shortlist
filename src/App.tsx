@@ -7,6 +7,7 @@ import { TableView } from './components/Table/TableView';
 import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
+import { ProjectSetupModal } from './components/Modals/ProjectSetupModal';
 import { Tutorial } from './components/Tutorial';
 import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
@@ -28,11 +29,12 @@ function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showProjectSetupModal, setShowProjectSetupModal] = useState(false);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { properties } = usePropertyStore();
-  const { settings } = useSettingsStore();
+  const { settings, hasProject } = useSettingsStore();
   const { hasCompleted, hasSkipped, startTutorial } = useTutorialStore();
 
   // Apply dark mode class to html element
@@ -65,20 +67,35 @@ function App() {
     setIsMobileSidebarOpen(false);
   }, [viewMode]);
 
+  // Show project setup modal on first visit if no city is selected
+  useEffect(() => {
+    // Wait for session loading to complete
+    if (isSessionLoading) return;
+    
+    // Show project setup if no city is set and not coming from a URL session
+    if (!hasSessionInUrl() && !hasProject()) {
+      // Small delay to let the app render first
+      const timer = setTimeout(() => {
+        setShowProjectSetupModal(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isSessionLoading, hasProject]);
+
   // Show tutorial on first visit (not loaded from URL session and not seen before)
   useEffect(() => {
     // Wait for session loading to complete
     if (isSessionLoading) return;
     
-    // Start tutorial if first visit (hasn't completed or skipped)
-    if (!hasSessionInUrl() && !hasCompleted && !hasSkipped) {
+    // Start tutorial if first visit (hasn't completed or skipped) and project is set
+    if (!hasSessionInUrl() && !hasCompleted && !hasSkipped && hasProject()) {
       // Small delay to let the app render first
       const timer = setTimeout(() => {
         startTutorial();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isSessionLoading, hasCompleted, hasSkipped, startTutorial]);
+  }, [isSessionLoading, hasCompleted, hasSkipped, startTutorial, hasProject]);
 
   // Handle share button click
   const handleShare = async () => {
@@ -108,7 +125,8 @@ function App() {
           searchQuery: '',
           sortBy: 'createdAt',
           sortDirection: 'desc',
-        } // default filters
+        }, // default filters
+        settings.project // include project/city data
       );
       
       const response = await fetch('/api/sessions', {
@@ -126,6 +144,14 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to create new session:', error);
+    }
+  };
+
+  // Handle project setup completion
+  const handleProjectSetupComplete = () => {
+    // After project setup, start tutorial if not seen
+    if (!hasCompleted && !hasSkipped) {
+      setTimeout(() => startTutorial(), 300);
     }
   };
 
@@ -185,6 +211,12 @@ function App() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         mode="import"
+      />
+
+      <ProjectSetupModal
+        isOpen={showProjectSetupModal}
+        onClose={() => setShowProjectSetupModal(false)}
+        onComplete={handleProjectSetupComplete}
       />
 
       {/* Interactive Onboarding Tutorial */}

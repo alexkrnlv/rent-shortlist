@@ -42,6 +42,7 @@ export function useUrlSession(): UseUrlSessionReturn {
   const tags = usePropertyStore((state) => state.tags);
   const filters = usePropertyStore((state) => state.filters);
   const centerPoint = useSettingsStore((state) => state.settings.centerPoint);
+  const project = useSettingsStore((state) => state.settings.project);
 
   // Store setters
   const propertyStore = usePropertyStore;
@@ -56,14 +57,18 @@ export function useUrlSession(): UseUrlSessionReturn {
       selectedPropertyId: null,
     });
 
-    if (session.c) {
+    // Apply project if present (v2+)
+    if (session.proj) {
+      settingsStore.getState().setProject(session.proj);
+    } else if (session.c) {
+      // Legacy: just set center point
       settingsStore.getState().setCenterPoint(session.c);
     }
   }, [propertyStore, settingsStore]);
 
   // Save current state to server
   const saveToServer = useCallback(async () => {
-    const state = buildSessionState(properties, tags, centerPoint, filters);
+    const state = buildSessionState(properties, tags, centerPoint, filters, project);
     const stateHash = JSON.stringify(state);
     
     // Skip if nothing changed
@@ -89,7 +94,7 @@ export function useUrlSession(): UseUrlSessionReturn {
     } finally {
       setIsSaving(false);
     }
-  }, [properties, tags, centerPoint, filters, sessionId]);
+  }, [properties, tags, centerPoint, filters, project, sessionId]);
 
   // Initialize: load session from URL or localStorage
   useEffect(() => {
@@ -175,7 +180,7 @@ export function useUrlSession(): UseUrlSessionReturn {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [properties, tags, centerPoint, filters, saveToServer, isLoading]);
+  }, [properties, tags, centerPoint, filters, project, saveToServer, isLoading]);
 
   // Handle browser back/forward
   useEffect(() => {

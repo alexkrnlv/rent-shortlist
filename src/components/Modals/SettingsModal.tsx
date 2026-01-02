@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { useSettingsStore } from '../../store/useSettingsStore';
+import { PlacesAutocomplete, CityAutocomplete } from '../ui/PlacesAutocomplete';
+import { useSettingsStore, POPULAR_CITIES } from '../../store/useSettingsStore';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
-import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor } from 'lucide-react';
-import type { ThemeMode } from '../../types';
+import { MapPin, GraduationCap, RefreshCw, Sun, Moon, Monitor, Globe, Search, ChevronDown } from 'lucide-react';
+import type { ThemeMode, CityContext } from '../../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, setCenterPoint, setThemeMode } = useSettingsStore();
+  const { settings, setCenterPoint, setThemeMode, setCity } = useSettingsStore();
   const { recalculateDistances, properties } = usePropertyStore();
   const { startTutorial, resetTutorial } = useTutorialStore();
 
@@ -22,20 +23,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [centerLat, setCenterLat] = useState(settings.centerPoint.lat.toString());
   const [centerLng, setCenterLng] = useState(settings.centerPoint.lng.toString());
   const [isRecalculating, setIsRecalculating] = useState(false);
+  
+  // City selection state
+  const [showCitySelector, setShowCitySelector] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setCenterName(settings.centerPoint.name);
       setCenterLat(settings.centerPoint.lat.toString());
       setCenterLng(settings.centerPoint.lng.toString());
+      setShowCitySelector(false);
+      setCitySearch('');
     }
   }, [isOpen, settings]);
+
+  // Handle location selection from Google Places
+  const handlePlaceSelect = (place: { name: string; address: string; lat: number; lng: number }) => {
+    const city = settings.project?.city;
+    const displayName = place.address || (city ? `${place.name}, ${city.name}` : place.name);
+    setCenterName(displayName);
+    setCenterLat(place.lat.toString());
+    setCenterLng(place.lng.toString());
+  };
 
   const handleSave = async () => {
     const newCenter = {
       name: centerName,
-      lat: parseFloat(centerLat) || 51.5142,
-      lng: parseFloat(centerLng) || -0.0885,
+      lat: parseFloat(centerLat) || 0,
+      lng: parseFloat(centerLng) || 0,
     };
     
     // Check if center point actually changed
@@ -59,43 +75,124 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose();
   };
 
-  const presetCenters = [
-    { name: 'Bank of England', lat: 51.5142, lng: -0.0885 },
-    { name: 'Liverpool Street', lat: 51.5178, lng: -0.0823 },
-    { name: 'Canary Wharf', lat: 51.5054, lng: -0.0235 },
-    { name: 'Kings Cross', lat: 51.5308, lng: -0.1238 },
-    { name: 'Westminster', lat: 51.4995, lng: -0.1248 },
-  ];
+  const handleCitySelect = (city: CityContext) => {
+    setCity(city);
+    setShowCitySelector(false);
+    setCitySearch('');
+    // Update center to city center
+    setCenterName(`City Center, ${city.name}`);
+    setCenterLat(city.lat.toString());
+    setCenterLng(city.lng.toString());
+  };
+
+  // Handle city selection from Google Places Autocomplete
+  const handleGoogleCitySelect = (city: { name: string; country: string; countryName: string; lat: number; lng: number }) => {
+    const cityContext: CityContext = {
+      name: city.name,
+      country: city.country,
+      countryName: city.countryName,
+      lat: city.lat,
+      lng: city.lng,
+    };
+    handleCitySelect(cityContext);
+  };
+
+  // Filter cities
+  const filteredCities = POPULAR_CITIES.filter(city =>
+    city.name.toLowerCase().includes(citySearch.toLowerCase()) ||
+    city.countryName.toLowerCase().includes(citySearch.toLowerCase())
+  );
+
+  const currentCity = settings.project?.city;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Settings" size="md">
       <div className="space-y-6">
+        {/* City Section */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Globe size={16} />
+            City / Region
+          </h3>
+          
+          <div className="relative">
+            <button
+              onClick={() => setShowCitySelector(!showCitySelector)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <MapPin className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {currentCity ? `${currentCity.name}, ${currentCity.countryName}` : 'Select a city...'}
+                </span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showCitySelector ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showCitySelector && (
+              <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-80 overflow-hidden">
+                {/* Google Places City Search */}
+                <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                  <CityAutocomplete
+                    placeholder="Search any city worldwide..."
+                    onCitySelect={handleGoogleCitySelect}
+                  />
+                </div>
+                
+                {/* Popular cities filter */}
+                <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Or select from popular cities:</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={citySearch}
+                      onChange={(e) => setCitySearch(e.target.value)}
+                      placeholder="Filter popular cities..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-40 overflow-y-auto p-1">
+                  {filteredCities.map((city) => (
+                    <button
+                      key={`${city.name}-${city.country}`}
+                      onClick={() => handleCitySelect(city)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                        currentCity?.name === city.name && currentCity?.country === city.country
+                          ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
+                      }`}
+                    >
+                      <span className="flex-1">{city.name}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{city.countryName}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Center Point Section */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <MapPin size={16} />
-            Center Point (for distance calculations)
+            Commute Destination (for distance calculations)
           </h3>
 
-          <div className="flex flex-wrap gap-2">
-            {presetCenters.map((preset) => (
-              <button
-                key={preset.name}
-                onClick={() => {
-                  setCenterName(preset.name);
-                  setCenterLat(preset.lat.toString());
-                  setCenterLng(preset.lng.toString());
-                }}
-                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                  centerName === preset.name
-                    ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-400'
-                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                {preset.name}
-              </button>
-            ))}
-          </div>
+          {/* Location Search with Google Places Autocomplete */}
+          <PlacesAutocomplete
+            placeholder={currentCity ? `Search for a location in ${currentCity.name}...` : 'Search for a location...'}
+            onPlaceSelect={handlePlaceSelect}
+            restrictToCity={currentCity ? {
+              name: currentCity.name,
+              country: currentCity.country,
+              lat: currentCity.lat,
+              lng: currentCity.lng,
+            } : undefined}
+            types={['establishment', 'geocode']}
+          />
 
           <Input
             label="Location Name"

@@ -1,8 +1,8 @@
 import { decompressFromEncodedURIComponent } from 'lz-string';
-import type { Property, PropertyTag, CenterPoint, Filters } from '../types';
+import type { Property, PropertyTag, CenterPoint, Filters, Project } from '../types';
 
-// Version for future migrations
-const CURRENT_VERSION = 1;
+// Version for future migrations (v2 adds project support)
+const CURRENT_VERSION = 2;
 
 // API base URL
 const API_BASE = '/api';
@@ -12,15 +12,16 @@ export interface UrlSessionState {
   v: number;          // version
   p: Property[];      // properties
   t: PropertyTag[];   // tags
-  c: CenterPoint;     // center point
+  c: CenterPoint;     // center point (legacy, kept for backwards compat)
   f: Filters;         // filters
+  proj?: Project;     // project with city context (v2+)
 }
 
-// Default values
+// Default values - no longer London-specific
 const DEFAULT_CENTER: CenterPoint = {
-  name: 'Bank of England, London',
-  lat: 51.5142,
-  lng: -0.0885,
+  name: '',
+  lat: 0,
+  lng: 0,
 };
 
 const DEFAULT_FILTERS: Filters = {
@@ -195,7 +196,8 @@ export function buildSessionState(
   properties: Property[],
   tags: PropertyTag[],
   centerPoint: CenterPoint,
-  filters: Filters
+  filters: Filters,
+  project?: Project | null
 ): UrlSessionState {
   return {
     v: CURRENT_VERSION,
@@ -203,19 +205,22 @@ export function buildSessionState(
     t: tags,
     c: centerPoint,
     f: filters,
+    proj: project || undefined,
   };
 }
 
 /**
  * Create an empty/default session state
  */
-export function createEmptySession(): UrlSessionState {
+export function createEmptySession(project?: Project | null): UrlSessionState {
+  const centerPoint = project?.centerPoint || DEFAULT_CENTER;
   return {
     v: CURRENT_VERSION,
     p: [],
     t: [],
-    c: DEFAULT_CENTER,
+    c: centerPoint,
     f: DEFAULT_FILTERS,
+    proj: project || undefined,
   };
 }
 

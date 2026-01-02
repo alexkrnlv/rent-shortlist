@@ -1,4 +1,4 @@
-import type { Coordinates, PropertyDistances, CenterPoint, ParsedPropertyData } from '../types';
+import type { Coordinates, PropertyDistances, CenterPoint, ParsedPropertyData, CityContext } from '../types';
 import { calculateDirectDistance } from '../utils/helpers';
 
 const API_BASE = '/api';
@@ -11,7 +11,8 @@ interface ProcessedProperty extends ParsedPropertyData {
 export async function processProperty(
   url: string, 
   claudeApiKey: string,
-  centerPoint: CenterPoint
+  centerPoint: CenterPoint,
+  cityContext?: CityContext | null
 ): Promise<ProcessedProperty> {
   // Step 1: Fetch and parse the page
   let parsedData: ParsedPropertyData;
@@ -20,7 +21,7 @@ export async function processProperty(
     const response = await fetch(API_BASE + '/fetch-property', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, claudeApiKey }),
+      body: JSON.stringify({ url, claudeApiKey, city: cityContext }),
     });
     
     if (!response.ok) {
@@ -45,7 +46,7 @@ export async function processProperty(
       const geoResponse = await fetch(API_BASE + '/geocode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: parsedData.address }),
+        body: JSON.stringify({ address: parsedData.address, city: cityContext }),
       });
       
       if (geoResponse.ok) {

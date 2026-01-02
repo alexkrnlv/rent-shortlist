@@ -445,7 +445,7 @@ function MobilePropertySheet({
 }
 
 export function MapView() {
-  const { settings } = useSettingsStore();
+  const { settings, getEffectiveCenterPoint } = useSettingsStore();
   const { getFilteredProperties, selectedPropertyId, setSelectedProperty, getPropertyById } = usePropertyStore();
   const isMobile = useMobileDetect();
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -455,6 +455,13 @@ export function MapView() {
   const [showTransit, setShowTransit] = useState(false);
   const [transitLayer, setTransitLayer] = useState<google.maps.TransitLayer | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Get effective center point (handles case when none is set)
+  const centerPoint = getEffectiveCenterPoint();
+  const hasCenterPoint = centerPoint.lat !== 0 || centerPoint.lng !== 0;
+  
+  // Default to a reasonable world view if no center point
+  const mapCenter = hasCenterPoint ? centerPoint : { lat: 40, lng: 0 };
 
   // Track dark mode state
   useEffect(() => {
@@ -506,11 +513,13 @@ export function MapView() {
             bounds.extend(p.coordinates);
           }
         });
-        bounds.extend(settings.centerPoint);
+        if (hasCenterPoint) {
+          bounds.extend(centerPoint);
+        }
         map.fitBounds(bounds, 50);
       }
     }
-  }, [map, mapReady, filteredProperties.length, settings.centerPoint]);
+  }, [map, mapReady, filteredProperties.length, centerPoint, hasCenterPoint]);
 
   // Center on selected property
   useEffect(() => {
@@ -600,26 +609,28 @@ export function MapView() {
     <div className="relative h-full w-full">
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        center={settings.centerPoint}
-        zoom={12}
+        center={mapCenter}
+        zoom={hasCenterPoint ? 12 : 3}
         options={getMapOptions(isDarkMode, isMobile)}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onClick={handleMapClick}
       >
-        {/* Center Point Marker - Amber/Orange color */}
-        <Marker
-          position={settings.centerPoint}
-          icon={{
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: isMobile ? 10 : 12,
-            fillColor: '#F59E0B', // amber-500
-            fillOpacity: 1,
-            strokeColor: '#FFFFFF',
-            strokeWeight: isMobile ? 2 : 3,
-          }}
-          title={settings.centerPoint.name}
-        />
+        {/* Center Point Marker - Amber/Orange color (only show if center point is set) */}
+        {hasCenterPoint && (
+          <Marker
+            position={centerPoint}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: isMobile ? 10 : 12,
+              fillColor: '#F59E0B', // amber-500
+              fillOpacity: 1,
+              strokeColor: '#FFFFFF',
+              strokeWeight: isMobile ? 2 : 3,
+            }}
+            title={centerPoint.name}
+          />
+        )}
 
         {/* Property Markers - Desktop: Images, Mobile: Dots */}
         {mapReady && filteredProperties.map((property) => (

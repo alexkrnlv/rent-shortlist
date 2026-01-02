@@ -73,7 +73,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
       );
 
       try {
-        const propertyData = await processProperty(url, settings.claudeApiKey, settings.centerPoint);
+        const propertyData = await processProperty(url, settings.claudeApiKey, settings.centerPoint, settings.project?.city);
 
         // Only add if we got coordinates
         if (propertyData.coordinates) {
@@ -131,11 +131,11 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
     setIsGeocodingManual(true);
 
     try {
-      // Geocode the address
-      const response = await fetch('http://localhost:3001/api/geocode', {
+      // Geocode the address with city context
+      const response = await fetch('/api/geocode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: manualAddress }),
+        body: JSON.stringify({ address: manualAddress, city: settings.project?.city }),
       });
 
       if (!response.ok) {
@@ -147,7 +147,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
       // Calculate distances
       let distances = null;
       if (coordinates && settings.centerPoint) {
-        const distResponse = await fetch('http://localhost:3001/api/distances', {
+        const distResponse = await fetch('/api/distances', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -385,7 +385,7 @@ export function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
                   type="text"
                   value={manualAddress}
                   onChange={(e) => { setManualAddress(e.target.value); setManualError(''); }}
-                  placeholder="e.g., 123 High Street, London E1 6AB"
+                  placeholder="e.g., 123 High Street, City, Postcode"
                   className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

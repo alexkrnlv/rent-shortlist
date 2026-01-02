@@ -1497,29 +1497,70 @@ ${preparedContent}`,
   }
 });
 
+// City context interface for geocoding
+interface CityContext {
+  name: string;
+  country: string;
+  countryName: string;
+  lat: number;
+  lng: number;
+}
+
 // Geocode address
 app.post('/api/geocode', async (req, res) => {
   try {
-    const { address } = req.body;
+    const { address, city } = req.body as { address: string; city?: CityContext };
     const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
 
     if (!address) {
       return res.status(400).json({ error: 'Address is required' });
     }
 
-    // Add London to help with geocoding
-    const searchAddress = address.toLowerCase().includes('london') 
-      ? address 
-      : address + ', London, UK';
+    // Build search address with city context if provided
+    let searchAddress = address;
+    let countryComponent = '';
+    
+    if (city) {
+      // If city context is provided, append city name for better accuracy
+      if (!address.toLowerCase().includes(city.name.toLowerCase())) {
+        searchAddress = `${address}, ${city.name}`;
+      }
+      // Use country code for component filtering
+      countryComponent = `&components=country:${city.country}`;
+    }
 
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${apiKey}`;
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${apiKey}${countryComponent}`;
     
     const response = await fetch(geocodeUrl);
     const data = await response.json();
 
     if (data.status === 'OK' && data.results.length > 0) {
-      const location = data.results[0].geometry.location;
-      return res.json({ lat: location.lat, lng: location.lng });
+      const result = data.results[0];
+      const location = result.geometry.location;
+      
+      // If city context is provided, optionally validate the result is in the right area
+      if (city) {
+        // Calculate distance from city center (rough validation)
+        const R = 6371; // Earth's radius in km
+        const dLat = ((city.lat - location.lat) * Math.PI) / 180;
+        const dLng = ((city.lng - location.lng) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos((location.lat * Math.PI) / 180) * Math.cos((city.lat * Math.PI) / 180) *
+                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceFromCity = R * c;
+        
+        // Warn if result is more than 100km from city center (but still return it)
+        if (distanceFromCity > 100) {
+          console.log(`Warning: Geocoded location is ${distanceFromCity.toFixed(0)}km from ${city.name} center`);
+        }
+      }
+      
+      return res.json({ 
+        lat: location.lat, 
+        lng: location.lng,
+        formattedAddress: result.formatted_address,
+      });
     }
 
     res.status(404).json({ error: 'Address not found' });
@@ -2265,7 +2306,11 @@ function isValidAddress(address: string | null | undefined): boolean {
 }
 
 // Validate address using Google Geocoding API - the ultimate test
-async function validateAddressWithGoogle(address: string): Promise<{ isValid: boolean; correctedAddress?: string; coordinates?: { lat: number; lng: number } }> {
+// Now supports any location worldwide (not just UK)
+async function validateAddressWithGoogle(
+  address: string, 
+  cityContext?: CityContext
+): Promise<{ isValid: boolean; correctedAddress?: string; coordinates?: { lat: number; lng: number } }> {
   const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
   
   if (!apiKey) {
@@ -2274,12 +2319,20 @@ async function validateAddressWithGoogle(address: string): Promise<{ isValid: bo
   }
   
   try {
-    // Add UK context for better results
-    const searchAddress = address.toLowerCase().includes('uk') || address.toLowerCase().includes('london')
-      ? address
-      : `${address}, UK`;
+    // Build search address with city context if available
+    let searchAddress = address;
+    let countryComponent = '';
     
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${apiKey}&components=country:GB`;
+    if (cityContext) {
+      // Add city name if not already present
+      if (!address.toLowerCase().includes(cityContext.name.toLowerCase())) {
+        searchAddress = `${address}, ${cityContext.name}`;
+      }
+      // Use country code for component filtering
+      countryComponent = `&components=country:${cityContext.country}`;
+    }
+    
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${apiKey}${countryComponent}`;
     
     const response = await fetch(geocodeUrl);
     const data = await response.json();
@@ -2288,19 +2341,29 @@ async function validateAddressWithGoogle(address: string): Promise<{ isValid: bo
       const result = data.results[0];
       const location = result.geometry.location;
       
-      // Check if the result is in the UK (rough bounds check)
-      const isInUK = location.lat >= 49 && location.lat <= 61 && location.lng >= -11 && location.lng <= 2;
-      
-      if (isInUK) {
-        return {
-          isValid: true,
-          correctedAddress: result.formatted_address,
-          coordinates: { lat: location.lat, lng: location.lng },
-        };
-      } else {
-        console.log(`Address geocoded but not in UK: ${location.lat}, ${location.lng}`);
-        return { isValid: false };
+      // If we have city context, validate the result is reasonably close to the city
+      if (cityContext) {
+        const R = 6371; // Earth's radius in km
+        const dLat = ((cityContext.lat - location.lat) * Math.PI) / 180;
+        const dLng = ((cityContext.lng - location.lng) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos((location.lat * Math.PI) / 180) * Math.cos((cityContext.lat * Math.PI) / 180) *
+                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceFromCity = R * c;
+        
+        // If result is more than 200km from city, it's probably wrong
+        if (distanceFromCity > 200) {
+          console.log(`Address geocoded but ${distanceFromCity.toFixed(0)}km from ${cityContext.name}, rejecting`);
+          return { isValid: false };
+        }
       }
+      
+      return {
+        isValid: true,
+        correctedAddress: result.formatted_address,
+        coordinates: { lat: location.lat, lng: location.lng },
+      };
     }
     
     console.log(`Google could not geocode address: "${address}" - status: ${data.status}`);

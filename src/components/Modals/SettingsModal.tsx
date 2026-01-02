@@ -148,71 +148,76 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </span>
             </div>
             <Button 
-              variant={showCityPicker ? "primary" : "secondary"} 
+              variant={showCityPicker ? "ghost" : "secondary"} 
               size="sm"
               onClick={() => setShowCityPicker(!showCityPicker)}
             >
-              {showCityPicker ? 'Close' : 'Change'}
+              {showCityPicker ? '✕ Cancel' : 'Change City'}
             </Button>
           </div>
 
           {/* City picker panel */}
           {showCityPicker && (
             <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
-              {/* Google Places autocomplete for any city */}
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Search any city worldwide:</p>
-                <CityAutocomplete
-                  placeholder="Type city name and select from dropdown..."
-                  onCitySelect={handleGoogleCitySelect}
-                  autoFocus
-                />
-              </div>
+              {/* Instructions */}
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                👆 <strong>Click on a city</strong> to select it:
+              </p>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                <span className="text-xs text-gray-400">or pick from list</span>
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-              </div>
-
-              {/* Filter popular cities */}
+              {/* Filter cities */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   value={cityFilter}
                   onChange={(e) => setCityFilter(e.target.value)}
-                  placeholder="Filter popular cities..."
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Type to filter cities (e.g. London, Paris, NYC...)"
+                  className="w-full pl-9 pr-4 py-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  autoFocus
                 />
               </div>
 
               {/* City grid - clickable buttons */}
-              <div className="max-h-48 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-2">
-                  {filteredCities.slice(0, 20).map((city) => (
-                    <button
-                      key={`${city.name}-${city.country}`}
-                      onClick={() => handleCitySelect(city)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all ${
-                        selectedCity?.name === city.name && selectedCity?.country === city.country
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {selectedCity?.name === city.name && selectedCity?.country === city.country ? (
-                        <Check className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0" />
-                      ) : (
-                        <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">{city.name}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{city.countryName}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              <div className="max-h-64 overflow-y-auto">
+                {filteredCities.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {filteredCities.map((city) => (
+                      <button
+                        key={`${city.name}-${city.country}`}
+                        onClick={() => handleCitySelect(city)}
+                        className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-left transition-all ${
+                          selectedCity?.name === city.name && selectedCity?.country === city.country
+                            ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/50 ring-2 ring-primary-500'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50 dark:hover:border-primary-600 dark:hover:bg-primary-900/30'
+                        }`}
+                      >
+                        {selectedCity?.name === city.name && selectedCity?.country === city.country ? (
+                          <Check className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                        ) : (
+                          <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 block truncate">{city.name}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{city.countryName}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p className="mb-2">No cities match "{cityFilter}"</p>
+                    <p className="text-xs">Try a different search term</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Optional: Google Places for cities not in list */}
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Can't find your city? Search worldwide:</p>
+                <CityAutocomplete
+                  placeholder="Type and select from dropdown..."
+                  onCitySelect={handleGoogleCitySelect}
+                />
               </div>
             </div>
           )}

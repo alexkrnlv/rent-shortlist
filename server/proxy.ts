@@ -1368,21 +1368,83 @@ Footer: "Agent HQ: 123 Business Park, E1 1AA"
 
 ## RESPONSE FORMAT
 
-Return a JSON object:
+Return a JSON object with property details AND criteria scores for the AHP advisor:
 
 {
   "name": "property title from H1 - e.g., '3 bedroom house, Barlow Drive'",
   "address": "PROPERTY address from title/H1 - e.g., 'Barlow Drive, London, SE18'",
   "addressConfidence": "high/medium/low",
   "addressReasoning": "Brief explanation - e.g., 'Address from page H1 heading'",
+  "price": "monthly rent if found - e.g., '£1,500 pcm'",
   "thumbnail": "best property image URL",
-  "isBTR": true/false
+  "isBTR": true/false,
+  
+  "propertyDetails": {
+    "sqm": number or null,
+    "sqft": number or null,
+    "bedrooms": number or null,
+    "bathrooms": number or null,
+    "floor": number or null,
+    "amenitiesList": ["balcony", "parking", "gym", ...] 
+  },
+  
+  "criteriaScores": {
+    "location": 1-10,
+    "size": 1-10,
+    "condition": 1-10,
+    "amenities": 1-10,
+    "comfort": 1-10,
+    
+    "locationNotes": "brief reasoning for location score",
+    "conditionNotes": "brief reasoning for condition score",
+    "comfortNotes": "brief reasoning for comfort score"
+  }
 }
+
+## CRITERIA SCORING GUIDELINES (1-10 scale)
+
+**Location (1-10)** - Assess neighborhood quality from description:
+- 9-10: Premium area, excellent transport, shops, parks nearby
+- 7-8: Good residential area, decent amenities
+- 5-6: Average area, some limitations
+- 3-4: Less desirable area, limited amenities
+- 1-2: Poor area indicators
+
+**Size (1-10)** - Based on sqm/sqft and room count:
+- 9-10: Very spacious (80+ sqm, 3+ beds, 2+ baths)
+- 7-8: Generous (60-80 sqm, 2 beds)
+- 5-6: Average (40-60 sqm, 1-2 beds)
+- 3-4: Compact (25-40 sqm, studio/1 bed)
+- 1-2: Very small (<25 sqm)
+
+**Condition (1-10)** - From description/photos:
+- 9-10: "newly renovated", "brand new", "luxury finish", "designer kitchen"
+- 7-8: "modern", "well maintained", "recently updated"
+- 5-6: "good condition", no special mentions
+- 3-4: "dated", "original features" (euphemism), "needs updating"
+- 1-2: "needs work", "fixer-upper", visible issues
+
+**Amenities (1-10)** - Count available amenities:
+- Each adds ~1 point: balcony, parking, garden, dishwasher, washing machine, dryer, air conditioning, lift, concierge, gym, pool, storage, bike storage
+- 9-10: 8+ amenities
+- 7-8: 5-7 amenities
+- 5-6: 3-4 amenities
+- 3-4: 1-2 amenities
+- 1-2: No amenities mentioned
+
+**Comfort (1-10)** - Light, noise, view, floor:
+- "bright", "south-facing", "natural light" → +2-3
+- "quiet", "residential street" → +2
+- "city view", "garden view", "river view" → +1-2
+- High floor with lift → +1
+- "busy road", "traffic" → -2
+- "basement", "lower ground" → -1
 
 Notes:
 - For partial postcodes (like SE18 without full code), that's fine - use what's shown in the title
 - If the title only shows an area name, use that with any postcode you can find in the main content
 - NEVER use an address from a "MARKETED BY" or "About the agent" section
+- If you cannot determine a score, use 5 as neutral default
 
 ## BTR (Build to Rent) / Development Sites
 
@@ -1615,8 +1677,144 @@ app.post('/api/distances', async (req, res) => {
 });
 
 // ============================================
+// Air Quality API (for AHP Advisor)
+// ============================================
+
+// Convert AQI (0-500) to normalized score (1-10)
+function aqiToScore(aqi: number): number {
+  if (aqi <= 50) return 10;           // Good
+  if (aqi <= 100) return 8;           // Moderate
+  if (aqi <= 150) return 6;           // Unhealthy for sensitive
+  if (aqi <= 200) return 4;           // Unhealthy
+  if (aqi <= 300) return 2;           // Very unhealthy
+  return 1;                            // Hazardous
+}
+
+// Get air quality data by coordinates
+app.post('/api/air-quality', async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+
+    // Try WAQI API first (if token available)
+    const waqiToken = process.env.WAQI_API_TOKEN;
+    
+    if (waqiToken) {
+      try {
+        const waqiUrl = `https://api.waqi.info/feed/geo:${lat};${lng}/?token=${waqiToken}`;
+        const response = await fetch(waqiUrl);
+        const data = await response.json();
+        
+        if (data.status === 'ok' && data.data && data.data.aqi) {
+          const aqi = data.data.aqi;
+          const score = aqiToScore(aqi);
+          
+          console.log(`Air quality for (${lat}, ${lng}): AQI=${aqi}, score=${score}`);
+          
+          return res.json({
+            aqi,
+            score,
+            source: 'waqi',
+            city: data.data.city?.name || null,
+            dominantPollutant: data.data.dominentpol || null,
+          });
+        }
+      } catch (error) {
+        console.error('WAQI API error:', error);
+        // Fall through to OpenAQ
+      }
+    }
+
+    // Fallback to OpenAQ (free, no token required)
+    try {
+      const openAqUrl = `https://api.openaq.org/v2/latest?coordinates=${lat},${lng}&radius=25000&limit=1`;
+      const response = await fetch(openAqUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        const result = data.results[0];
+        
+        // Find PM2.5 measurement (most common indicator)
+        const pm25 = result.measurements?.find((m: any) => m.parameter === 'pm25');
+        const pm10 = result.measurements?.find((m: any) => m.parameter === 'pm10');
+        
+        // Convert PM2.5 to approximate AQI (simplified US EPA formula)
+        let aqi = 50; // Default moderate
+        if (pm25) {
+          const pm25Value = pm25.value;
+          if (pm25Value <= 12) aqi = Math.round(pm25Value * 4.17);
+          else if (pm25Value <= 35.4) aqi = Math.round(50 + (pm25Value - 12) * 2.1);
+          else if (pm25Value <= 55.4) aqi = Math.round(100 + (pm25Value - 35.4) * 2.5);
+          else if (pm25Value <= 150.4) aqi = Math.round(150 + (pm25Value - 55.4) * 0.53);
+          else aqi = Math.round(200 + (pm25Value - 150.4) * 0.33);
+        } else if (pm10) {
+          const pm10Value = pm10.value;
+          aqi = Math.round(pm10Value * 0.5); // Rough approximation
+        }
+        
+        const score = aqiToScore(aqi);
+        
+        console.log(`Air quality (OpenAQ) for (${lat}, ${lng}): AQI≈${aqi}, score=${score}`);
+        
+        return res.json({
+          aqi,
+          score,
+          source: 'openaq',
+          city: result.city || null,
+          location: result.location || null,
+        });
+      }
+    } catch (error) {
+      console.error('OpenAQ API error:', error);
+    }
+
+    // If no data available, return neutral score
+    console.log(`No air quality data available for (${lat}, ${lng}), using neutral score`);
+    return res.json({
+      aqi: null,
+      score: 5, // Neutral when no data
+      source: 'none',
+      message: 'No air quality data available for this location',
+    });
+
+  } catch (error) {
+    console.error('Air quality API error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ============================================
 // Extension Property Storage (Redis-backed)
 // ============================================
+
+// Property details extracted from listing for AHP criteria
+interface PropertyDetails {
+  sqm?: number;
+  sqft?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  floor?: number;
+  amenitiesList?: string[];
+}
+
+// Criteria scores for AHP advisor (1-10 scale)
+interface CriteriaScoresData {
+  location?: number;
+  size?: number;
+  condition?: number;
+  amenities?: number;
+  comfort?: number;
+  locationNotes?: string;
+  conditionNotes?: string;
+  comfortNotes?: string;
+}
 
 interface ExtensionProperty {
   id: string;
@@ -1633,6 +1831,9 @@ interface ExtensionProperty {
   processed: boolean;
   processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
   error?: string;
+  // AHP Advisor data
+  propertyDetails?: PropertyDetails;
+  criteriaScores?: CriteriaScoresData;
 }
 
 // In-memory fallback
@@ -1760,11 +1961,11 @@ async function processPropertyInBackground(property: ExtensionProperty): Promise
     contentForAI = sanitizeContentForAI(contentForAI);
     console.log(`   Content length (sanitized): ${contentForAI.length} chars`);
     
-    // Call Claude for extraction - Claude parses EVERYTHING
+    // Call Claude for extraction - Claude parses EVERYTHING including criteria scores
     const anthropic = new Anthropic({ apiKey: claudeApiKey });
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
+      max_tokens: 2500,
       messages: [{
         role: 'user',
         content: `You are parsing a UK property rental listing. Extract ALL details from the page content below.
@@ -1775,13 +1976,41 @@ Return a JSON object with these fields:
   "address": "full property address with postcode - NOT the estate agent's address",
   "price": "monthly rent - e.g., '£2,500 pcm'",
   "thumbnail": "main property image URL if found",
-  "isBTR": true/false
+  "isBTR": true/false,
+  
+  "propertyDetails": {
+    "sqm": number or null,
+    "sqft": number or null,
+    "bedrooms": number or null,
+    "bathrooms": number or null,
+    "floor": number or null,
+    "amenitiesList": ["balcony", "parking", "gym", ...] 
+  },
+  
+  "criteriaScores": {
+    "location": 1-10,
+    "size": 1-10,
+    "condition": 1-10,
+    "amenities": 1-10,
+    "comfort": 1-10,
+    "locationNotes": "brief reasoning",
+    "conditionNotes": "brief reasoning",
+    "comfortNotes": "brief reasoning"
+  }
 }
 
 ## Important Rules:
 1. The ADDRESS must be the PROPERTY location, not the estate agent's office
 2. Look for postcode patterns (e.g., E14 5AB, SW1A 1AA)
 3. Extract the actual monthly rent price
+
+## CRITERIA SCORING (1-10 scale):
+
+**Location:** 9-10 premium area, 7-8 good, 5-6 average, 3-4 less desirable, 1-2 poor
+**Size:** 9-10 very spacious (80+ sqm), 7-8 generous (60-80 sqm), 5-6 average (40-60 sqm), 3-4 compact, 1-2 very small
+**Condition:** 9-10 "newly renovated/luxury", 7-8 "modern/well maintained", 5-6 average, 3-4 "dated", 1-2 "needs work"
+**Amenities:** Count: balcony, parking, garden, dishwasher, washer, dryer, AC, lift, concierge, gym, storage. 8+ = 9-10, 5-7 = 7-8, 3-4 = 5-6, 1-2 = 3-4, 0 = 1-2
+**Comfort:** "bright/south-facing" +2-3, "quiet" +2, "view" +1-2, high floor +1, "busy road" -2, "basement" -1
 
 ## BTR (Build to Rent) Detection:
 Set isBTR to true if you detect ANY of these:
@@ -1864,7 +2093,7 @@ ${contentForAI.substring(0, 80000)}`,
     // Update parsed with validated address
     parsed.address = validatedAddress;
 
-    // Update property with ALL parsed data
+    // Update property with ALL parsed data including criteria scores
     await propertyStorage.update(property.id, {
       title: parsed.name || 'Property',
       address: parsed.address || '',
@@ -1875,6 +2104,9 @@ ${contentForAI.substring(0, 80000)}`,
       processingStatus: 'completed',
       pageText: undefined, // Clear page text to save storage
       error: undefined,
+      // AHP Advisor data
+      propertyDetails: parsed.propertyDetails || undefined,
+      criteriaScores: parsed.criteriaScores || undefined,
     });
 
     console.log(`✅ Background processing complete: ${parsed.name || property.url}`);

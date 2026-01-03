@@ -1,11 +1,35 @@
-import type { Coordinates, PropertyDistances, CenterPoint, ParsedPropertyData, CityContext } from '../types';
+import type { Coordinates, PropertyDistances, CenterPoint, ParsedPropertyData, CityContext, CriteriaScores } from '../types';
 import { calculateDirectDistance } from '../utils/helpers';
+import { fetchAirQualityScore, calculateLocationScore } from '../utils/criteriaScorer';
 
 const API_BASE = '/api';
+
+// Extended parsed data with AHP criteria
+interface ParsedPropertyWithCriteria extends ParsedPropertyData {
+  propertyDetails?: {
+    sqm?: number;
+    sqft?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    floor?: number;
+    amenitiesList?: string[];
+  };
+  criteriaScores?: {
+    location?: number;
+    size?: number;
+    condition?: number;
+    amenities?: number;
+    comfort?: number;
+    locationNotes?: string;
+    conditionNotes?: string;
+    comfortNotes?: string;
+  };
+}
 
 interface ProcessedProperty extends ParsedPropertyData {
   coordinates: Coordinates | null;
   distances: PropertyDistances | null;
+  criteriaScores?: CriteriaScores;
 }
 
 export async function processProperty(
@@ -14,8 +38,8 @@ export async function processProperty(
   centerPoint: CenterPoint,
   cityContext?: CityContext | null
 ): Promise<ProcessedProperty> {
-  // Step 1: Fetch and parse the page
-  let parsedData: ParsedPropertyData;
+  // Step 1: Fetch and parse the page (now includes criteria scores from AI)
+  let parsedData: ParsedPropertyWithCriteria;
   
   try {
     const response = await fetch(API_BASE + '/fetch-property', {
@@ -62,9 +86,10 @@ export async function processProperty(
 
   // Step 3: Calculate distances if we have coordinates
   let distances: PropertyDistances | null = null;
+  let directDistance: number | null = null;
   
   if (coordinates) {
-    const directDistance = calculateDirectDistance(
+    directDistance = calculateDirectDistance(
       coordinates.lat,
       coordinates.lng,
       centerPoint.lat,
@@ -108,10 +133,58 @@ export async function processProperty(
     }
   }
 
+  // Step 4: Fetch air quality if we have coordinates
+  let airQualityScore = 5; // Default neutral
+  let airQualityData: { aqi?: number; source?: string } = {};
+  
+  if (coordinates) {
+    try {
+      const aqData = await fetchAirQualityScore(coordinates.lat, coordinates.lng);
+      airQualityScore = aqData.score;
+      airQualityData = { aqi: aqData.aqi ?? undefined, source: aqData.source };
+    } catch (error) {
+      console.error('Air quality fetch error:', error);
+    }
+  }
+
+  // Step 5: Build complete criteria scores
+  const aiCriteriaScores = parsedData.criteriaScores;
+  const propertyDetails = parsedData.propertyDetails;
+  
+  // Calculate location score (combines distance + AI neighborhood assessment)
+  const locationScore = calculateLocationScore(directDistance, aiCriteriaScores?.location);
+  
+  // Build final criteria scores
+  const criteriaScores: CriteriaScores = {
+    // Price will be calculated later when we have all properties for comparison
+    // For now, use 5 as placeholder (will be updated by AHP when advisor opens)
+    price: 5,
+    location: locationScore,
+    size: aiCriteriaScores?.size || 5,
+    condition: aiCriteriaScores?.condition || 5,
+    amenities: aiCriteriaScores?.amenities || 5,
+    comfort: aiCriteriaScores?.comfort || 5,
+    airQuality: airQualityScore,
+    
+    rawData: {
+      sqm: propertyDetails?.sqm,
+      bedrooms: propertyDetails?.bedrooms,
+      bathrooms: propertyDetails?.bathrooms,
+      floor: propertyDetails?.floor,
+      amenitiesList: propertyDetails?.amenitiesList,
+      aqi: airQualityData.aqi,
+      aqiSource: airQualityData.source,
+      locationScore: aiCriteriaScores?.location,
+      conditionNotes: aiCriteriaScores?.conditionNotes,
+      comfortNotes: aiCriteriaScores?.comfortNotes,
+    },
+  };
+
   return {
     ...parsedData,
     coordinates,
     distances,
+    criteriaScores,
   };
 }
 

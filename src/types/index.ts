@@ -36,6 +36,8 @@ export interface Property {
   isBTR: boolean; // Build to Rent
   tags: string[]; // array of tag IDs
   createdAt: string;
+  // AHP Advisor - AI-assessed criteria scores
+  criteriaScores?: CriteriaScores;
 }
 
 export interface CenterPoint {
@@ -97,4 +99,37 @@ export interface ParsedPropertyData {
   images?: string[];
   price?: string;
   isBTR?: boolean;
+}
+
+// ============================================
+// AHP Advisor - Criteria Scores
+// ============================================
+
+// Raw data extracted from property listing for transparency
+export interface CriteriaRawData {
+  sqm?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  floor?: number;
+  yearBuilt?: number;
+  amenitiesList?: string[];
+  aqi?: number;           // Raw AQI value (0-500)
+  aqiSource?: string;     // Data source (OpenAQ, WAQI, etc.)
+  locationScore?: number; // AI-assessed neighborhood quality
+  conditionNotes?: string; // AI notes on condition
+  comfortNotes?: string;   // AI notes on comfort factors
+}
+
+// Normalized scores for each criterion (1-10 scale)
+export interface CriteriaScores {
+  price: number;      // 1-10, inverse (cheaper = higher score)
+  location: number;   // 1-10, distance + neighborhood quality
+  size: number;       // 1-10, sqm/bedrooms normalized
+  condition: number;  // 1-10, AI assessment of renovation state
+  amenities: number;  // 1-10, count of amenities normalized
+  comfort: number;    // 1-10, AI assessment (light, noise, view)
+  airQuality: number; // 1-10, AQI normalized
+
+  // Raw extracted data for transparency and debugging
+  rawData?: CriteriaRawData;
 }

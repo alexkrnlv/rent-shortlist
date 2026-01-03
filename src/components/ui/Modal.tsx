@@ -3,15 +3,16 @@ import { Dialog, Transition } from '@headlessui/react';
 import { X } from 'lucide-react';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 
-interface ModalProps {
+export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  hideHeader?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', hideHeader = false }: ModalProps) {
   const isMobile = useMobileDetect();
   const contentRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
@@ -123,21 +124,23 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
                 </div>
 
                 {/* Header */}
-                <div 
-                  data-modal-header
-                  className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700"
-                >
-                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {title}
-                  </Dialog.Title>
-                  <button
-                    onClick={onClose}
-                    aria-label="Close modal"
-                    className="w-10 h-10 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                {!hideHeader && (
+                  <div 
+                    data-modal-header
+                    className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700"
                   >
-                    <X size={22} />
-                  </button>
-                </div>
+                    <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {title || ''}
+                    </Dialog.Title>
+                    <button
+                      onClick={onClose}
+                      aria-label="Close modal"
+                      className="w-10 h-10 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                    >
+                      <X size={22} />
+                    </button>
+                  </div>
+                )}
 
                 {/* Scrollable content */}
                 <div 
@@ -182,19 +185,21 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className={`w-full ${sizes[size]} transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl transition-all`}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {title}
-                  </Dialog.Title>
-                  <button
-                    onClick={onClose}
-                    aria-label="Close modal"
-                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                <div className="px-6 py-4">{children}</div>
+                {!hideHeader && (
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {title || ''}
+                    </Dialog.Title>
+                    <button
+                      onClick={onClose}
+                      aria-label="Close modal"
+                      className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                )}
+                <div className={hideHeader ? "p-6" : "px-6 py-4"}>{children}</div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

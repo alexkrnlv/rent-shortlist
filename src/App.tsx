@@ -8,6 +8,7 @@ import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
 import { ProjectSetupModal } from './components/Modals/ProjectSetupModal';
+import { AdvisorModal } from './components/Advisor';
 import { Tutorial } from './components/Tutorial';
 import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
@@ -190,6 +191,14 @@ function App() {
         onClose={handleProjectSetupClose}
         onComplete={handleProjectSetupComplete}
         isNewSession={isNewSessionSetup}
+      />
+
+      {/* AHP Property Advisor */}
+      <AdvisorModal 
+        onShowOnMap={(propertyId) => {
+          usePropertyStore.getState().setSelectedProperty(propertyId);
+          setViewMode('map');
+        }}
       />
 
       {/* Interactive Onboarding Tutorial */}

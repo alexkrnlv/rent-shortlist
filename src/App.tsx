@@ -8,12 +8,10 @@ import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
 import { ProjectSetupModal } from './components/Modals/ProjectSetupModal';
-import { AdvisorModal } from './components/Advisor';
-import { Tutorial } from './components/Tutorial';
 import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
 import { useSettingsStore } from './store/useSettingsStore';
-import { useTutorialStore } from './store/useTutorialStore';
+// import { useTutorialStore } from './store/useTutorialStore';
 import { useExtensionSync } from './hooks/useExtensionSync';
 import { useUrlSession } from './hooks/useUrlSession';
 import { hasSessionInUrl, getShareableUrl, copyToClipboard } from './utils/urlSession';
@@ -36,7 +34,8 @@ function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { properties } = usePropertyStore();
   const { settings, hasProject } = useSettingsStore();
-  const { hasCompleted, hasSkipped, startTutorial } = useTutorialStore();
+  // Tutorial disabled for now
+  // const { hasCompleted, hasSkipped, startTutorial } = useTutorialStore();
 
   // Apply dark mode class to html element
   useEffect(() => {
@@ -83,20 +82,16 @@ function App() {
     }
   }, [isSessionLoading, hasProject]);
 
-  // Show tutorial on first visit (not loaded from URL session and not seen before)
-  useEffect(() => {
-    // Wait for session loading to complete
-    if (isSessionLoading) return;
-    
-    // Start tutorial if first visit (hasn't completed or skipped) and project is set
-    if (!hasSessionInUrl() && !hasCompleted && !hasSkipped && hasProject()) {
-      // Small delay to let the app render first
-      const timer = setTimeout(() => {
-        startTutorial();
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isSessionLoading, hasCompleted, hasSkipped, startTutorial, hasProject]);
+  // Tutorial disabled for now
+  // useEffect(() => {
+  //   if (isSessionLoading) return;
+  //   if (!hasSessionInUrl() && !hasCompleted && !hasSkipped && hasProject()) {
+  //     const timer = setTimeout(() => {
+  //       startTutorial();
+  //     }, 300);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [isSessionLoading, hasCompleted, hasSkipped, startTutorial, hasProject]);
 
   // Handle share button click
   const handleShare = async () => {
@@ -122,10 +117,10 @@ function App() {
 
   // Handle project setup completion
   const handleProjectSetupComplete = () => {
-    // After project setup, start tutorial if not seen
-    if (!hasCompleted && !hasSkipped) {
-      setTimeout(() => startTutorial(), 300);
-    }
+    // Tutorial disabled for now
+    // if (!hasCompleted && !hasSkipped) {
+    //   setTimeout(() => startTutorial(), 300);
+    // }
   };
 
   return (
@@ -193,16 +188,16 @@ function App() {
         isNewSession={isNewSessionSetup}
       />
 
-      {/* AHP Property Advisor */}
-      <AdvisorModal 
+      {/* AHP Property Advisor - disabled for now */}
+      {/* <AdvisorModal 
         onShowOnMap={(propertyId) => {
           usePropertyStore.getState().setSelectedProperty(propertyId);
           setViewMode('map');
         }}
-      />
+      /> */}
 
-      {/* Interactive Onboarding Tutorial */}
-      <Tutorial />
+      {/* Interactive Onboarding Tutorial - disabled for now */}
+      {/* <Tutorial /> */}
 
       {/* Copied toast notification */}
       {showCopiedToast && (

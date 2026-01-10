@@ -1,7 +1,6 @@
-import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor, MapPin, Sparkles } from 'lucide-react';
+import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor, MapPin } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
-import { useAHPStore } from '../../store/useAHPStore';
 import type { ThemeMode } from '../../types';
 import { Button } from '../ui/Button';
 
@@ -31,7 +30,6 @@ export function Header({
   onViewModeChange,
 }: HeaderProps) {
   const { settings, setThemeMode } = useSettingsStore();
-  const { openAdvisor } = useAHPStore();
   const isMobile = useMobileDetect();
   
   // Get current city name for display
@@ -170,29 +168,6 @@ export function Header({
 
       {/* Right Section: Actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Advisor Button - Primary CTA */}
-        <Button 
-          variant="primary" 
-          size="sm" 
-          onClick={openAdvisor}
-          className="hidden lg:inline-flex"
-          disabled={propertyCount < 2}
-          title={propertyCount < 2 ? "Add at least 2 properties to use Advisor" : "Find your perfect property match"}
-        >
-          <Sparkles size={18} className="mr-1.5" />
-          Advisor
-        </Button>
-        <Button 
-          variant="primary" 
-          size="sm" 
-          onClick={openAdvisor}
-          className="lg:hidden p-2"
-          disabled={propertyCount < 2}
-          title={propertyCount < 2 ? "Add at least 2 properties" : "Advisor"}
-        >
-          <Sparkles size={18} />
-        </Button>
-        
         <Button variant="ghost" size="sm" onClick={onImportClick} className="hidden lg:inline-flex">
           <Upload size={18} className="mr-1.5" />
           Import

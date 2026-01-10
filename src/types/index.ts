@@ -21,6 +21,19 @@ export interface PropertyTag {
   color: string; // hex color
 }
 
+// Amenities that can be toggled for a property
+export interface PropertyAmenities {
+  gym: boolean;
+  swimmingPool: boolean;
+  parking: boolean;
+  concierge?: boolean;
+  rooftop?: boolean;
+  garden?: boolean;
+}
+
+// Furnished status options
+export type FurnishedStatus = 'furnished' | 'unfurnished' | 'part-furnished' | null;
+
 export interface Property {
   id: string;
   url: string;
@@ -38,6 +51,15 @@ export interface Property {
   createdAt: string;
   // AHP Advisor - AI-assessed criteria scores
   criteriaScores?: CriteriaScores;
+  
+  // New fields
+  petsAllowed?: boolean | null; // null = unknown
+  petExtraPrice?: string; // Extra monthly cost for pets (e.g., "£50/month")
+  councilTaxBand?: string; // A-H
+  councilTaxEstimate?: string; // Estimated annual council tax (e.g., "£1,500/year")
+  amenities?: PropertyAmenities;
+  furnished?: FurnishedStatus;
+  size?: string; // e.g., "45 sqm", "485 sqft", "2 bed"
 }
 
 export interface CenterPoint {
@@ -76,7 +98,7 @@ export interface Settings {
   themeMode: ThemeMode;
 }
 
-export type SortField = 'rating' | 'distance' | 'price' | 'createdAt' | 'name' | 'publicTransport' | 'walking' | 'driving';
+export type SortField = 'rating' | 'distance' | 'price' | 'createdAt' | 'name' | 'publicTransport' | 'walking' | 'driving' | 'size' | 'councilTaxBand' | 'furnished';
 export type SortDirection = 'asc' | 'desc';
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -99,6 +121,14 @@ export interface ParsedPropertyData {
   images?: string[];
   price?: string;
   isBTR?: boolean;
+  // New parsed fields
+  petsAllowed?: boolean | null;
+  petExtraPrice?: string;
+  councilTaxBand?: string;
+  councilTaxEstimate?: string;
+  amenities?: PropertyAmenities;
+  furnished?: FurnishedStatus;
+  size?: string;
 }
 
 // ============================================

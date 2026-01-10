@@ -21,12 +21,20 @@ import {
   Plus,
   Tag,
   MessageSquare,
+  PawPrint,
+  Home,
+  Dumbbell,
+  Waves,
+  ParkingCircle,
+  Ruler,
+  Receipt,
 } from 'lucide-react';
 import { usePropertyStore } from '../../store/usePropertyStore';
 import { StarRating } from '../ui/StarRating';
 import { Button } from '../ui/Button';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { generateId } from '../../utils/helpers';
-import type { Property, SortField, PropertyTag } from '../../types';
+import type { Property, SortField, PropertyTag, PropertyAmenities, FurnishedStatus } from '../../types';
 
 const TAG_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -212,6 +220,305 @@ function CommentCell({ comment, onSave }: CommentCellProps) {
   );
 }
 
+// Pets Cell Component
+interface PetsCellProps {
+  petsAllowed: boolean | null | undefined;
+  petExtraPrice: string | undefined;
+  onUpdate: (petsAllowed: boolean | null, petExtraPrice?: string) => void;
+}
+
+function PetsCell({ petsAllowed, petExtraPrice, onUpdate }: PetsCellProps) {
+  const [showPriceInput, setShowPriceInput] = useState(false);
+  const [priceValue, setPriceValue] = useState(petExtraPrice || '');
+
+  const handleToggle = () => {
+    if (petsAllowed === true) {
+      onUpdate(false);
+      setShowPriceInput(false);
+    } else if (petsAllowed === false) {
+      onUpdate(null);
+    } else {
+      onUpdate(true);
+    }
+  };
+
+  const handleSavePrice = () => {
+    onUpdate(true, priceValue);
+    setShowPriceInput(false);
+  };
+
+  return (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={handleToggle}
+        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+          petsAllowed === true
+            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+            : petsAllowed === false
+              ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+        }`}
+        title={petsAllowed === true ? 'Pets allowed' : petsAllowed === false ? 'No pets' : 'Unknown'}
+      >
+        <PawPrint size={10} />
+        {petsAllowed === true ? 'Yes' : petsAllowed === false ? 'No' : '?'}
+      </button>
+      
+      {petsAllowed === true && (
+        showPriceInput ? (
+          <div className="flex items-center gap-0.5">
+            <input
+              type="text"
+              value={priceValue}
+              onChange={(e) => setPriceValue(e.target.value)}
+              placeholder="£50/mo"
+              className="w-14 text-[10px] px-1 py-0.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSavePrice();
+                if (e.key === 'Escape') setShowPriceInput(false);
+              }}
+            />
+            <button onClick={handleSavePrice} className="text-green-600"><Check size={10} /></button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowPriceInput(true)}
+            className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline"
+          >
+            {petExtraPrice || '+£?'}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+// Council Tax Cell Component
+interface CouncilTaxCellProps {
+  band: string | undefined;
+  estimate: string | undefined;
+  onUpdate: (band?: string, estimate?: string) => void;
+}
+
+const COUNCIL_TAX_BANDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+function CouncilTaxCell({ band, estimate, onUpdate }: CouncilTaxCellProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editBand, setEditBand] = useState(band || '');
+  const [editEstimate, setEditEstimate] = useState(estimate || '');
+
+  const handleSave = () => {
+    onUpdate(editBand || undefined, editEstimate || undefined);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <select
+            value={editBand}
+            onChange={(e) => setEditBand(e.target.value)}
+            className="text-[10px] px-1 py-0.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+          >
+            <option value="">Band</option>
+            {COUNCIL_TAX_BANDS.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={editEstimate}
+            onChange={(e) => setEditEstimate(e.target.value)}
+            placeholder="£1,500/yr"
+            className="w-16 text-[10px] px-1 py-0.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+          />
+        </div>
+        <div className="flex gap-0.5">
+          <button onClick={handleSave} className="text-green-600"><Check size={10} /></button>
+          <button onClick={() => setIsEditing(false)} className="text-gray-400"><X size={10} /></button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+      className="flex items-center gap-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 rounded group"
+    >
+      <Receipt size={10} className="text-gray-400" />
+      {band ? (
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Band {band}</span>
+          {estimate && <span className="text-gray-500 dark:text-gray-400 ml-1 text-[10px]">{estimate}</span>}
+        </span>
+      ) : (
+        <span className="text-gray-400 text-[10px]">Add tax</span>
+      )}
+      <Edit2 size={8} className="opacity-0 group-hover:opacity-100 text-gray-400" />
+    </button>
+  );
+}
+
+// Amenities Cell Component
+interface AmenitiesCellProps {
+  amenities: PropertyAmenities | undefined;
+  onUpdate: (amenities: PropertyAmenities) => void;
+}
+
+function AmenitiesCell({ amenities, onUpdate }: AmenitiesCellProps) {
+  const current: PropertyAmenities = amenities || { gym: false, swimmingPool: false, parking: false };
+
+  const toggleAmenity = (key: keyof PropertyAmenities) => {
+    onUpdate({ ...current, [key]: !current[key] });
+  };
+
+  return (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => toggleAmenity('gym')}
+        className={`p-1 rounded transition-colors ${
+          current.gym
+            ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+        }`}
+        title="Gym"
+      >
+        <Dumbbell size={12} />
+      </button>
+      <button
+        onClick={() => toggleAmenity('swimmingPool')}
+        className={`p-1 rounded transition-colors ${
+          current.swimmingPool
+            ? 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+        }`}
+        title="Swimming Pool"
+      >
+        <Waves size={12} />
+      </button>
+      <button
+        onClick={() => toggleAmenity('parking')}
+        className={`p-1 rounded transition-colors ${
+          current.parking
+            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+        }`}
+        title="Parking"
+      >
+        <ParkingCircle size={12} />
+      </button>
+    </div>
+  );
+}
+
+// Furnished Cell Component
+interface FurnishedCellProps {
+  furnished: FurnishedStatus;
+  onUpdate: (furnished: FurnishedStatus) => void;
+}
+
+const FURNISHED_OPTIONS: { value: FurnishedStatus; label: string; shortLabel: string }[] = [
+  { value: null, label: 'Unknown', shortLabel: '?' },
+  { value: 'furnished', label: 'Furnished', shortLabel: 'Furn' },
+  { value: 'unfurnished', label: 'Unfurnished', shortLabel: 'Unfurn' },
+  { value: 'part-furnished', label: 'Part Furnished', shortLabel: 'Part' },
+];
+
+function FurnishedCell({ furnished, onUpdate }: FurnishedCellProps) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const current = FURNISHED_OPTIONS.find(o => o.value === furnished) || FURNISHED_OPTIONS[0];
+
+  return (
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setShowDropdown(!showDropdown)}
+        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+          furnished === 'furnished'
+            ? 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300'
+            : furnished === 'unfurnished'
+              ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300'
+              : furnished === 'part-furnished'
+                ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+        }`}
+      >
+        <Home size={10} />
+        {current.shortLabel}
+      </button>
+      
+      {showDropdown && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[100px]">
+          {FURNISHED_OPTIONS.map((option) => (
+            <button
+              key={option.label}
+              onClick={() => { onUpdate(option.value); setShowDropdown(false); }}
+              className={`w-full px-2 py-1 text-left text-xs hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                option.value === furnished ? 'bg-gray-100 dark:bg-gray-700' : ''
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Size Cell Component
+interface SizeCellProps {
+  size: string | undefined;
+  onSave: (size: string) => void;
+}
+
+function SizeCell({ size, onSave }: SizeCellProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(size || '');
+
+  const handleSave = () => {
+    onSave(editValue);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          placeholder="45 sqm"
+          className="w-16 text-[10px] px-1 py-0.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave();
+            if (e.key === 'Escape') setIsEditing(false);
+          }}
+        />
+        <button onClick={handleSave} className="text-green-600"><Check size={10} /></button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+      className="flex items-center gap-0.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 rounded group"
+    >
+      <Ruler size={10} className="text-gray-400" />
+      {size ? (
+        <span className="text-gray-700 dark:text-gray-300">{size}</span>
+      ) : (
+        <span className="text-gray-400 text-[10px]">Add</span>
+      )}
+      <Edit2 size={8} className="opacity-0 group-hover:opacity-100 text-gray-400" />
+    </button>
+  );
+}
+
 interface TableViewProps {
   onShowOnMap?: (propertyId: string) => void;
 }
@@ -239,6 +546,7 @@ export function TableView({ onShowOnMap }: TableViewProps) {
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
+  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
 
   const handleSort = (field: SortField) => {
     if (filters.sortBy === field) {
@@ -540,238 +848,324 @@ export function TableView({ onShowOnMap }: TableViewProps) {
       {/* Desktop Table */}
       {properties.length > 0 && (
         <div className="hidden md:block flex-1 min-h-0 overflow-auto">
-            <table className="w-full border-collapse table-auto">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                  <th className="py-3 px-3 text-left font-semibold text-sm w-14"></th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors min-w-[200px]"
-                    onClick={() => handleSort('name')}
-                  >
-                    <div className="flex items-center gap-2">Property <SortIcon field="name" /></div>
-                  </th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-28"
-                    onClick={() => handleSort('price')}
-                  >
-                    <div className="flex items-center gap-2">Price <SortIcon field="price" /></div>
-                  </th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-32"
-                    onClick={() => handleSort('rating')}
-                  >
-                    <div className="flex items-center gap-2">Rating <SortIcon field="rating" /></div>
-                  </th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
-                    onClick={() => handleSort('distance')}
-                  >
-                    <div className="flex items-center gap-2">Distance <SortIcon field="distance" /></div>
-                  </th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
-                    onClick={() => handleSort('publicTransport')}
-                  >
-                    <div className="flex items-center gap-2"><Train size={14} /> Transit <SortIcon field="publicTransport" /></div>
-                  </th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
-                    onClick={() => handleSort('walking')}
-                  >
-                    <div className="flex items-center gap-2"><PersonStanding size={14} /> Walk <SortIcon field="walking" /></div>
-                  </th>
-                  <th
-                    className="py-3 px-3 text-left font-semibold text-sm cursor-pointer group hover:bg-white/5 transition-colors w-24"
-                    onClick={() => handleSort('driving')}
-                  >
-                    <div className="flex items-center gap-2"><Car size={14} /> Drive <SortIcon field="driving" /></div>
-                  </th>
-                  <th className="py-3 px-3 text-left font-semibold text-sm w-32">Tags</th>
-                  <th className="py-3 px-3 text-left font-semibold text-sm">Notes</th>
-                  <th className="py-3 px-3 text-center font-semibold text-sm w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {properties.map((property, index) => (
-                  <tr
-                    key={property.id}
-                    onClick={() => handleRowClick(property)}
-                    className={`
-                      border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-all duration-200
-                      ${selectedPropertyId === property.id
-                        ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-l-primary-500'
-                        : index % 2 === 0
-                          ? 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
-                          : 'bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/80 dark:hover:bg-gray-700'
-                      }
-                    `}
-                  >
-                    {/* Thumbnail */}
-                    <td className="py-2 px-3">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 shadow-sm">
-                        {property.thumbnail ? (
-                          <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <MapPin size={16} className="text-gray-400 dark:text-gray-500" />
-                          </div>
-                        )}
-                      </div>
-                    </td>
+          <table className="w-full border-collapse min-w-[1400px]">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gradient-to-r from-slate-700 to-slate-800 text-white text-xs">
+                {/* Link - First */}
+                <th className="py-2.5 px-2 text-center font-medium w-10">
+                  <ExternalLink size={14} className="mx-auto opacity-70" />
+                </th>
+                {/* Thumbnail */}
+                <th className="py-2.5 px-2 text-left font-medium w-12"></th>
+                {/* Property */}
+                <th
+                  className="py-2.5 px-3 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors min-w-[180px]"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-1.5">Property <SortIcon field="name" /></div>
+                </th>
+                {/* Price */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-24"
+                  onClick={() => handleSort('price')}
+                >
+                  <div className="flex items-center gap-1.5">Price <SortIcon field="price" /></div>
+                </th>
+                {/* Size */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-20"
+                  onClick={() => handleSort('size')}
+                >
+                  <div className="flex items-center gap-1"><Ruler size={12} /> Size <SortIcon field="size" /></div>
+                </th>
+                {/* Furnished */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-16"
+                  onClick={() => handleSort('furnished')}
+                >
+                  <div className="flex items-center gap-1"><Home size={12} /> Furn <SortIcon field="furnished" /></div>
+                </th>
+                {/* Pets */}
+                <th className="py-2.5 px-2 text-left font-medium w-24">
+                  <div className="flex items-center gap-1"><PawPrint size={12} /> Pets</div>
+                </th>
+                {/* Council Tax */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-28"
+                  onClick={() => handleSort('councilTaxBand')}
+                >
+                  <div className="flex items-center gap-1"><Receipt size={12} /> Tax <SortIcon field="councilTaxBand" /></div>
+                </th>
+                {/* Rating */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-24"
+                  onClick={() => handleSort('rating')}
+                >
+                  <div className="flex items-center gap-1.5">Rating <SortIcon field="rating" /></div>
+                </th>
+                {/* Distance */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-20"
+                  onClick={() => handleSort('distance')}
+                >
+                  <div className="flex items-center gap-1"><Navigation size={12} /> Dist <SortIcon field="distance" /></div>
+                </th>
+                {/* Transit */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-20"
+                  onClick={() => handleSort('publicTransport')}
+                >
+                  <div className="flex items-center gap-1"><Train size={12} /> <SortIcon field="publicTransport" /></div>
+                </th>
+                {/* Walk */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-20"
+                  onClick={() => handleSort('walking')}
+                >
+                  <div className="flex items-center gap-1"><PersonStanding size={12} /> <SortIcon field="walking" /></div>
+                </th>
+                {/* Drive */}
+                <th
+                  className="py-2.5 px-2 text-left font-medium cursor-pointer group hover:bg-white/5 transition-colors w-20"
+                  onClick={() => handleSort('driving')}
+                >
+                  <div className="flex items-center gap-1"><Car size={12} /> <SortIcon field="driving" /></div>
+                </th>
+                {/* Amenities */}
+                <th className="py-2.5 px-2 text-left font-medium w-24">
+                  <div className="flex items-center gap-1"><Dumbbell size={12} /> Amenities</div>
+                </th>
+                {/* Tags */}
+                <th className="py-2.5 px-2 text-left font-medium w-28">
+                  <div className="flex items-center gap-1"><Tag size={12} /> Tags</div>
+                </th>
+                {/* Notes */}
+                <th className="py-2.5 px-2 text-left font-medium min-w-[120px]">
+                  <div className="flex items-center gap-1"><MessageSquare size={12} /> Notes</div>
+                </th>
+                {/* Delete - Last */}
+                <th className="py-2.5 px-2 text-center font-medium w-10">
+                  <Trash2 size={12} className="mx-auto opacity-70" />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {properties.map((property, index) => (
+                <tr
+                  key={property.id}
+                  onClick={() => handleRowClick(property)}
+                  className={`
+                    border-b border-gray-100 dark:border-gray-700/50 cursor-pointer transition-colors
+                    ${selectedPropertyId === property.id
+                      ? 'bg-primary-50 dark:bg-primary-900/20 border-l-2 border-l-primary-500'
+                      : index % 2 === 0
+                        ? 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750'
+                        : 'bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-750'
+                    }
+                  `}
+                >
+                  {/* Link */}
+                  <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    {property.url ? (
+                      <a
+                        href={property.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center w-7 h-7 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-md transition-colors"
+                        title="View listing"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    ) : (
+                      <span className="text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </td>
 
-                    {/* Property Name & Address */}
-                    <td className="py-2 px-3">
-                      <div className="flex items-start gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-gray-900 dark:text-white text-sm truncate max-w-[180px]">
-                              {property.name || 'Untitled'}
-                            </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateProperty(property.id, { isBTR: !property.isBTR });
-                              }}
-                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                property.isBTR
-                                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/60'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                              title={property.isBTR ? 'Click to unmark BTR' : 'Click to mark as BTR'}
-                            >
-                              <Building2 size={10} />
-                              BTR
-                            </button>
-                          </div>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <EditableCell
-                              value={property.address}
-                              onSave={(value) => updateProperty(property.id, { address: value })}
-                              placeholder="Add address"
-                              className="text-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate"
-                            />
-                          </div>
+                  {/* Thumbnail */}
+                  <td className="py-1.5 px-2">
+                    <div className="w-9 h-9 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+                      {property.thumbnail ? (
+                        <img src={property.thumbnail} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <MapPin size={14} className="text-gray-400 dark:text-gray-500" />
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Price */}
-                    <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                      <EditableCell
-                        value={property.price || ''}
-                        onSave={(value) => updateProperty(property.id, { price: value })}
-                        placeholder="Add price"
-                        className="font-bold text-primary-700 dark:text-primary-400"
-                      />
-                    </td>
-
-                    {/* Rating */}
-                    <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                      <StarRating
-                        rating={property.rating}
-                        onChange={(rating) => updateProperty(property.id, { rating })}
-                        size="sm"
-                      />
-                    </td>
-
-                    {/* Distance */}
-                    <td className="py-2 px-3">
-                      {property.distances ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Navigation size={12} className="text-gray-500 dark:text-gray-400" />
-                          <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {property.distances.direct.toFixed(1)} km
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">—</span>
                       )}
-                    </td>
+                    </div>
+                  </td>
 
-                    {/* Public Transport Time */}
-                    <td className="py-2 px-3">
-                      {property.distances?.publicTransport ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium">
-                          <Train size={10} />
-                          {property.distances.publicTransport.duration}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-sm">—</span>
-                      )}
-                    </td>
-
-                    {/* Walking Time */}
-                    <td className="py-2 px-3">
-                      {property.distances?.walking ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-[10px] font-medium">
-                          <PersonStanding size={10} />
-                          {property.distances.walking.duration}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-sm">—</span>
-                      )}
-                    </td>
-
-                    {/* Driving Time */}
-                    <td className="py-2 px-3">
-                      {property.distances?.driving ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded text-[10px] font-medium">
-                          <Car size={10} />
-                          {property.distances.driving.duration}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-sm">—</span>
-                      )}
-                    </td>
-
-                    {/* Tags */}
-                    <td className="py-2 px-3">
-                      <TagPicker
-                        propertyTags={property.tags || []}
-                        availableTags={tags}
-                        onToggle={(tagId) => handleTagToggle(property.id, tagId)}
-                      />
-                    </td>
-
-                    {/* Notes/Comment */}
-                    <td className="py-2 px-3">
-                      <CommentCell
-                        comment={property.comment || ''}
-                        onSave={(comment) => updateProperty(property.id, { comment })}
-                      />
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-2 px-3">
-                      <div className="flex items-center justify-center gap-1">
-                        {property.url && (
-                          <a
-                            href={property.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
-                            title="View listing"
-                          >
-                            <ExternalLink size={14} />
-                          </a>
-                        )}
+                  {/* Property Name & Address */}
+                  <td className="py-1.5 px-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm truncate max-w-[160px]">
+                          {property.name || 'Untitled'}
+                        </p>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeProperty(property.id);
+                            updateProperty(property.id, { isBTR: !property.isBTR });
                           }}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                          title="Remove property"
+                          className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold transition-colors ${
+                            property.isBTR
+                              ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200'
+                          }`}
+                          title={property.isBTR ? 'Build to Rent' : 'Mark as BTR'}
                         >
-                          <Trash2 size={14} />
+                          <Building2 size={9} />
+                          BTR
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-[160px]">
+                        {property.address || '—'}
+                      </p>
+                    </div>
+                  </td>
+
+                  {/* Price */}
+                  <td className="py-1.5 px-2" onClick={(e) => e.stopPropagation()}>
+                    <EditableCell
+                      value={property.price || ''}
+                      onSave={(value) => updateProperty(property.id, { price: value })}
+                      placeholder="—"
+                      className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm"
+                    />
+                  </td>
+
+                  {/* Size */}
+                  <td className="py-1.5 px-2">
+                    <SizeCell
+                      size={property.size}
+                      onSave={(size) => updateProperty(property.id, { size })}
+                    />
+                  </td>
+
+                  {/* Furnished */}
+                  <td className="py-1.5 px-2">
+                    <FurnishedCell
+                      furnished={property.furnished || null}
+                      onUpdate={(furnished) => updateProperty(property.id, { furnished })}
+                    />
+                  </td>
+
+                  {/* Pets */}
+                  <td className="py-1.5 px-2">
+                    <PetsCell
+                      petsAllowed={property.petsAllowed}
+                      petExtraPrice={property.petExtraPrice}
+                      onUpdate={(petsAllowed, petExtraPrice) => 
+                        updateProperty(property.id, { petsAllowed, petExtraPrice })
+                      }
+                    />
+                  </td>
+
+                  {/* Council Tax */}
+                  <td className="py-1.5 px-2">
+                    <CouncilTaxCell
+                      band={property.councilTaxBand}
+                      estimate={property.councilTaxEstimate}
+                      onUpdate={(councilTaxBand, councilTaxEstimate) => 
+                        updateProperty(property.id, { councilTaxBand, councilTaxEstimate })
+                      }
+                    />
+                  </td>
+
+                  {/* Rating */}
+                  <td className="py-1.5 px-2" onClick={(e) => e.stopPropagation()}>
+                    <StarRating
+                      rating={property.rating}
+                      onChange={(rating) => updateProperty(property.id, { rating })}
+                      size="sm"
+                    />
+                  </td>
+
+                  {/* Distance */}
+                  <td className="py-1.5 px-2">
+                    {property.distances ? (
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                        {property.distances.direct.toFixed(1)} km
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
+
+                  {/* Transit */}
+                  <td className="py-1.5 px-2">
+                    {property.distances?.publicTransport ? (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium whitespace-nowrap">
+                        {property.distances.publicTransport.duration}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
+
+                  {/* Walk */}
+                  <td className="py-1.5 px-2">
+                    {property.distances?.walking ? (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-medium whitespace-nowrap">
+                        {property.distances.walking.duration}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
+
+                  {/* Drive */}
+                  <td className="py-1.5 px-2">
+                    {property.distances?.driving ? (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded text-[10px] font-medium whitespace-nowrap">
+                        {property.distances.driving.duration}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
+
+                  {/* Amenities */}
+                  <td className="py-1.5 px-2">
+                    <AmenitiesCell
+                      amenities={property.amenities}
+                      onUpdate={(amenities) => updateProperty(property.id, { amenities })}
+                    />
+                  </td>
+
+                  {/* Tags */}
+                  <td className="py-1.5 px-2">
+                    <TagPicker
+                      propertyTags={property.tags || []}
+                      availableTags={tags}
+                      onToggle={(tagId) => handleTagToggle(property.id, tagId)}
+                    />
+                  </td>
+
+                  {/* Notes */}
+                  <td className="py-1.5 px-2">
+                    <CommentCell
+                      comment={property.comment || ''}
+                      onSave={(comment) => updateProperty(property.id, { comment })}
+                    />
+                  </td>
+
+                  {/* Delete */}
+                  <td className="py-1.5 px-2 text-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPropertyToDelete(property);
+                      }}
+                      className="inline-flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                      title="Remove property"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -878,6 +1272,60 @@ export function TableView({ onShowOnMap }: TableViewProps) {
                     </div>
                   )}
 
+                  {/* Property Details Grid */}
+                  <div className="grid grid-cols-2 gap-3" onClick={(e) => e.stopPropagation()}>
+                    {/* Size */}
+                    <div>
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Size</label>
+                      <SizeCell
+                        size={property.size}
+                        onSave={(size) => updateProperty(property.id, { size })}
+                      />
+                    </div>
+
+                    {/* Furnished */}
+                    <div>
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Furnished</label>
+                      <FurnishedCell
+                        furnished={property.furnished || null}
+                        onUpdate={(furnished) => updateProperty(property.id, { furnished })}
+                      />
+                    </div>
+
+                    {/* Pets */}
+                    <div>
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Pets</label>
+                      <PetsCell
+                        petsAllowed={property.petsAllowed}
+                        petExtraPrice={property.petExtraPrice}
+                        onUpdate={(petsAllowed, petExtraPrice) => 
+                          updateProperty(property.id, { petsAllowed, petExtraPrice })
+                        }
+                      />
+                    </div>
+
+                    {/* Council Tax */}
+                    <div>
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Council Tax</label>
+                      <CouncilTaxCell
+                        band={property.councilTaxBand}
+                        estimate={property.councilTaxEstimate}
+                        onUpdate={(councilTaxBand, councilTaxEstimate) => 
+                          updateProperty(property.id, { councilTaxBand, councilTaxEstimate })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Amenities */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Amenities</label>
+                    <AmenitiesCell
+                      amenities={property.amenities}
+                      onUpdate={(amenities) => updateProperty(property.id, { amenities })}
+                    />
+                  </div>
+
                   {/* Tags */}
                   <div onClick={(e) => e.stopPropagation()}>
                     <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Tags</label>
@@ -924,7 +1372,7 @@ export function TableView({ onShowOnMap }: TableViewProps) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeProperty(property.id);
+                        setPropertyToDelete(property);
                       }}
                       className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-red-200 dark:border-red-800"
                     >
@@ -949,6 +1397,23 @@ export function TableView({ onShowOnMap }: TableViewProps) {
           ))}
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={propertyToDelete !== null}
+        onClose={() => setPropertyToDelete(null)}
+        onConfirm={() => {
+          if (propertyToDelete) {
+            removeProperty(propertyToDelete.id);
+            setPropertyToDelete(null);
+          }
+        }}
+        title="Delete Property?"
+        message={`"${propertyToDelete?.name || 'This property'}" will be moved to trash. You can restore it later.`}
+        confirmText="Move to Trash"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor, MapPin } from 'lucide-react';
+import { Settings, Download, Upload, Share2, FolderPlus, Map, Table2, Sun, Moon, Monitor, MapPin, Trash2 } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 import type { ThemeMode } from '../../types';
@@ -12,7 +12,9 @@ interface HeaderProps {
   onImportClick: () => void;
   onShareClick: () => void;
   onNewSessionClick: () => void;
+  onTrashClick: () => void;
   propertyCount: number;
+  deletedCount: number;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onMobileSidebarToggle: () => void;
@@ -25,7 +27,9 @@ export function Header({
   onImportClick,
   onShareClick,
   onNewSessionClick,
+  onTrashClick,
   propertyCount,
+  deletedCount,
   viewMode,
   onViewModeChange,
 }: HeaderProps) {
@@ -197,6 +201,19 @@ export function Header({
         <Button variant="ghost" size="sm" onClick={onShareClick} className="lg:hidden p-2" title="Share">
           <Share2 size={18} />
         </Button>
+        {/* Trash Button */}
+        <button
+          onClick={onTrashClick}
+          className="relative p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5"
+          title="Trash Bin"
+        >
+          <Trash2 size={18} />
+          {deletedCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {deletedCount > 99 ? '99+' : deletedCount}
+            </span>
+          )}
+        </button>
         {/* Theme Toggle */}
         <button
           onClick={cycleTheme}

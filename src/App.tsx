@@ -8,6 +8,7 @@ import { AddPropertyModal } from './components/Modals/AddPropertyModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { ExportImportModal } from './components/Modals/ExportImportModal';
 import { ProjectSetupModal } from './components/Modals/ProjectSetupModal';
+import { TrashModal } from './components/Modals/TrashModal';
 import { ToastProvider } from './components/ui/Toast';
 import { usePropertyStore } from './store/usePropertyStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -28,11 +29,12 @@ function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showProjectSetupModal, setShowProjectSetupModal] = useState(false);
+  const [showTrashModal, setShowTrashModal] = useState(false);
   const [isNewSessionSetup, setIsNewSessionSetup] = useState(false);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { properties } = usePropertyStore();
+  const { properties, deletedProperties } = usePropertyStore();
   const { settings, hasProject } = useSettingsStore();
   // Tutorial disabled for now
   // const { hasCompleted, hasSkipped, startTutorial } = useTutorialStore();
@@ -143,7 +145,9 @@ function App() {
             onImportClick={() => setShowImportModal(true)}
             onShareClick={handleShare}
             onNewSessionClick={handleNewSession}
+            onTrashClick={() => setShowTrashModal(true)}
             propertyCount={properties.length}
+            deletedCount={deletedProperties.length}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -186,6 +190,11 @@ function App() {
         onClose={handleProjectSetupClose}
         onComplete={handleProjectSetupComplete}
         isNewSession={isNewSessionSetup}
+      />
+
+      <TrashModal
+        isOpen={showTrashModal}
+        onClose={() => setShowTrashModal(false)}
       />
 
       {/* AHP Property Advisor - disabled for now */}

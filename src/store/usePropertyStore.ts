@@ -22,8 +22,14 @@ export function normalizeUrl(url: string): string {
   }
 }
 
+// Deleted property with deletion timestamp
+export interface DeletedProperty extends Property {
+  deletedAt: string;
+}
+
 interface PropertyState {
   properties: Property[];
+  deletedProperties: DeletedProperty[];
   pendingProperties: PendingProperty[];
   tags: PropertyTag[];
   filters: Filters;
@@ -53,6 +59,11 @@ interface PropertyState {
   removeTag: (id: string) => void;
   addTagToProperty: (propertyId: string, tagId: string) => void;
   removeTagFromProperty: (propertyId: string, tagId: string) => void;
+  // Trash/Bin management
+  restoreProperty: (id: string) => void;
+  permanentlyDeleteProperty: (id: string) => void;
+  emptyTrash: () => void;
+  getDeletedProperties: () => DeletedProperty[];
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -71,6 +82,7 @@ export const usePropertyStore = create<PropertyState>()(
   persist(
     (set, get) => ({
       properties: [],
+      deletedProperties: [],
       pendingProperties: [],
       tags: [],
       filters: DEFAULT_FILTERS,
@@ -86,10 +98,21 @@ export const usePropertyStore = create<PropertyState>()(
           ),
         })),
       removeProperty: (id: string) =>
-        set((state) => ({
-          properties: state.properties.filter((p) => p.id !== id),
-          selectedPropertyId: state.selectedPropertyId === id ? null : state.selectedPropertyId,
-        })),
+        set((state) => {
+          const propertyToRemove = state.properties.find((p) => p.id === id);
+          if (!propertyToRemove) return state;
+          
+          const deletedProperty: DeletedProperty = {
+            ...propertyToRemove,
+            deletedAt: new Date().toISOString(),
+          };
+          
+          return {
+            properties: state.properties.filter((p) => p.id !== id),
+            deletedProperties: [...state.deletedProperties, deletedProperty],
+            selectedPropertyId: state.selectedPropertyId === id ? null : state.selectedPropertyId,
+          };
+        }),
       clearAllProperties: () => set({ properties: [], selectedPropertyId: null }),
       setFilters: (filters: Partial<Filters>) =>
         set((state) => ({ filters: { ...state.filters, ...filters } })),
@@ -191,6 +214,40 @@ export const usePropertyStore = create<PropertyState>()(
               const priceA = parseInt(a.price?.replace(/[^0-9]/g, '') || '0', 10);
               const priceB = parseInt(b.price?.replace(/[^0-9]/g, '') || '0', 10);
               return (priceA - priceB) * dir;
+            case 'size': {
+              // Parse numeric size from strings like "65 sqm", "485 sqft", etc.
+              const parseSize = (size: string | undefined): number => {
+                if (!size) return 0;
+                const match = size.match(/(\d+(?:\.\d+)?)/);
+                return match ? parseFloat(match[1]) : 0;
+              };
+              const sizeA = parseSize(a.size);
+              const sizeB = parseSize(b.size);
+              return (sizeA - sizeB) * dir;
+            }
+            case 'councilTaxBand': {
+              // Sort by band A-H (A=1, H=8), empty = 0
+              const bandOrder = (band: string | undefined): number => {
+                if (!band) return 0;
+                const idx = 'ABCDEFGH'.indexOf(band.toUpperCase());
+                return idx >= 0 ? idx + 1 : 0;
+              };
+              const bandA = bandOrder(a.councilTaxBand);
+              const bandB = bandOrder(b.councilTaxBand);
+              return (bandA - bandB) * dir;
+            }
+            case 'furnished': {
+              // Sort order: furnished=1, part-furnished=2, unfurnished=3, null=4
+              const furnishedOrder = (f: string | null | undefined): number => {
+                if (f === 'furnished') return 1;
+                if (f === 'part-furnished') return 2;
+                if (f === 'unfurnished') return 3;
+                return 4;
+              };
+              const furnA = furnishedOrder(a.furnished);
+              const furnB = furnishedOrder(b.furnished);
+              return (furnA - furnB) * dir;
+            }
             case 'name':
               return a.name.localeCompare(b.name) * dir;
             case 'createdAt':
@@ -326,6 +383,27 @@ export const usePropertyStore = create<PropertyState>()(
               : p
           ),
         })),
+      // Trash/Bin management
+      restoreProperty: (id: string) =>
+        set((state) => {
+          const deletedProperty = state.deletedProperties.find((p) => p.id === id);
+          if (!deletedProperty) return state;
+          
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { deletedAt, ...restoredProperty } = deletedProperty;
+          
+          return {
+            deletedProperties: state.deletedProperties.filter((p) => p.id !== id),
+            properties: [...state.properties, restoredProperty as Property],
+          };
+        }),
+      permanentlyDeleteProperty: (id: string) =>
+        set((state) => ({
+          deletedProperties: state.deletedProperties.filter((p) => p.id !== id),
+        })),
+      emptyTrash: () =>
+        set({ deletedProperties: [] }),
+      getDeletedProperties: () => get().deletedProperties,
     }),
     { name: 'rent-shortlist-properties' }
   )

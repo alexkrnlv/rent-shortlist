@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Property, PropertyTag } from '../../types';
 import { Card } from '../ui/Card';
 import { StarRating } from '../ui/StarRating';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 
 interface PropertyCardProps {
@@ -38,6 +39,7 @@ export function PropertyCard({
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [comment, setComment] = useState(property.comment || '');
   const [price, setPrice] = useState(property.price || '');
   const [address, setAddress] = useState(property.address || '');
@@ -264,7 +266,7 @@ export function PropertyCard({
                 BTR
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
                 className="w-12 h-12 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors"
                 aria-label="Remove property"
               >
@@ -273,6 +275,18 @@ export function PropertyCard({
             </div>
           </div>
         </div>
+
+        {/* Delete confirmation dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={onRemove}
+          title="Delete Property?"
+          message={`"${property.name || 'This property'}" will be moved to trash. You can restore it later.`}
+          confirmText="Move to Trash"
+          cancelText="Cancel"
+          variant="danger"
+        />
       </Card>
     );
   }
@@ -524,7 +538,7 @@ export function PropertyCard({
                 </a>
               )}
               <button
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
                 className="p-3 md:p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                 title="Remove property"
                 aria-label="Remove property"
@@ -535,6 +549,18 @@ export function PropertyCard({
           </div>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={onRemove}
+        title="Delete Property?"
+        message={`"${property.name || 'This property'}" will be moved to trash. You can restore it later.`}
+        confirmText="Move to Trash"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </Card>
   );
 }

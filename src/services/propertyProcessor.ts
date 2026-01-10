@@ -1,4 +1,4 @@
-import type { Coordinates, PropertyDistances, CenterPoint, ParsedPropertyData, CityContext, CriteriaScores } from '../types';
+import type { Coordinates, PropertyDistances, CenterPoint, ParsedPropertyData, CityContext, CriteriaScores, PropertyAmenities, FurnishedStatus } from '../types';
 import { calculateDirectDistance } from '../utils/helpers';
 import { fetchAirQualityScore, calculateLocationScore } from '../utils/criteriaScorer';
 
@@ -24,12 +24,28 @@ interface ParsedPropertyWithCriteria extends ParsedPropertyData {
     conditionNotes?: string;
     comfortNotes?: string;
   };
+  // New fields from AI parsing
+  petsAllowed?: boolean | null;
+  petExtraPrice?: string;
+  councilTaxBand?: string;
+  councilTaxEstimate?: string;
+  amenities?: PropertyAmenities;
+  furnished?: FurnishedStatus;
+  size?: string;
 }
 
 interface ProcessedProperty extends ParsedPropertyData {
   coordinates: Coordinates | null;
   distances: PropertyDistances | null;
   criteriaScores?: CriteriaScores;
+  // New fields
+  petsAllowed?: boolean | null;
+  petExtraPrice?: string;
+  councilTaxBand?: string;
+  councilTaxEstimate?: string;
+  amenities?: PropertyAmenities;
+  furnished?: FurnishedStatus;
+  size?: string;
 }
 
 export async function processProperty(
@@ -185,6 +201,14 @@ export async function processProperty(
     coordinates,
     distances,
     criteriaScores,
+    // Include new fields from parsed data
+    petsAllowed: parsedData.petsAllowed,
+    petExtraPrice: parsedData.petExtraPrice,
+    councilTaxBand: parsedData.councilTaxBand,
+    councilTaxEstimate: parsedData.councilTaxEstimate,
+    amenities: parsedData.amenities,
+    furnished: parsedData.furnished,
+    size: parsedData.size,
   };
 }
 
